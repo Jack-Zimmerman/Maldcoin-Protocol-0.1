@@ -11,6 +11,7 @@ import codecs
 import cryptocode
 import zlib, base64
 import socket
+import threading
 
 #grabbing blockchain external functions:
 from blockchainFunctions import stringHash
@@ -41,8 +42,6 @@ blockchain = blockChain()
 blockchain.syncChain()
 
 pendingTransactions = []
-
-
 
 
 def writeKnownData():
@@ -125,10 +124,26 @@ class handleRequest:
 
 
 #Server Start:
-hostname = socket.gethostname()
-local_ip = socket.gethostbyname(hostname)
-fullNodeServer = Server(local_ip, 1234, 10)
+
+fullNodeServer = Server(socket.gethostbyname(socket.gethostname()), 1234, 10)
+
+def requestHandler():
+	while True:
+		for i in range(len(fullNodeServer.connections)):
+			fullNodeServer.recievemsg(fullNodeServer.connections["Connection" + str((i + 1))][0])
+			request = handleRequest(fullNodeServer.finalmsgS)
+			toReturn = request.handleRequest()
+			fullNodeServer.sendataspecfic(toReturn,fullNodeServer.connections["Connection" + str((i + 1))][0])
+
+acceptConnectionsThread = threading.thread(target=fullNodeServer.acceptconnections)
+
+requestHandlerThread = threading.thread(target=requestHandler)
+
+acceptConnectionsThread.start()
+
+requestHandlerThread.start()
 
 
 
-#x = handleRequest("00000000000000000000000000000000TRANSACTION00000000000000000000000000000000" + json.dumps(blockchain.chainDict[10]["transactions"][0]))
+#request = handleRequest(message)
+#toReturn = request.handleRequest()

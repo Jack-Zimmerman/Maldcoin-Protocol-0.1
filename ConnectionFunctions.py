@@ -100,7 +100,6 @@ class Server():
 
 
     def sendataspecfic(self, data, clientsocket):
-        while True:
             clientsocket.send(bytes(fullmsg(data), "utf-8"))
 
     def sendata(self, data):
