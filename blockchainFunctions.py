@@ -106,17 +106,23 @@ def nodeVerifyTransaction(transaction):
 ##############################################################################
 #account information grabbing
 def generateBalance(blockchain, account):
-    total = 0
-    for x in blockchain.chainDict:
-        for y in x["transactions"]:
-            for z in y["outputs"]:
-                if z[0] == account:
-                    total += z[1]
+    try:
+        with open("knownData.dat", "w") as knownFile:
+            data = json.loads(knownFile.read())
 
-            if y["sender"] == account:
-                total -= y["txamount"]
+        return data["bals"][account]
+    except:
+        total = 0
+        for x in blockchain.chainDict:
+            for y in x["transactions"]:
+                for z in y["outputs"]:
+                    if z[0] == account:
+                        total += z[1]
 
-    return total
+                if y["sender"] == account:
+                    total -= y["txamount"]
+
+        return total
 
             
 ##############################################################################
@@ -245,8 +251,6 @@ class block:
 
         #murkleTree = MerkleTree(self.transactions, stringHash)
         self.murkleString = (str(MerkleTree(self.transactions, stringHash))[12:-2])
-
-        self.size = len(json.dumps(self.__dict__)) * 8
         blockchain.addBlock(self)
 
 class transaction:
@@ -340,7 +344,7 @@ class wallet:
 #non class functions
     
 
-def mine(password, block, miner, blockchain):
+def mine(block, miner, blockchain):
     global password 
     hash = rawHash(block.header)
     startTime = time.time()
