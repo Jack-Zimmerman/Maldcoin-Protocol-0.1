@@ -2,6 +2,7 @@ import hashlib
 from merklelib import MerkleTree
 
 import time
+import math
 import json
 import ecdsa
 import codecs
@@ -9,7 +10,7 @@ import cryptocode
 import zlib, base64
 
 password = ""
-block_reward = 50000000000
+
 
 ##############################################################################
 
@@ -22,7 +23,7 @@ def inputPassword(new):
 #Hash functions for varying usage
 
 def stringHash(string):
-    return hashlib.sha256(str(string).encode('ISO-8859-1')).hexdigest()
+    return hashlib.sha256(str(string).encode('ISO-8859-1')).digest().hex()
 
 def rawHash(string):
     return hashlib.sha256(str(string).encode()).digest()
@@ -39,16 +40,20 @@ def arbDifficulty(hashDemand):
 
 
 ##############################################################################
+#blockchain verification:
+
+
+##############################################################################
 
 #block/transaction verification:
 
 def verifyBlock(block):
-    global block_reward
-    
     try:
         block = block.__dict__
     except:
         pass
+
+    block_reward = (100 * 10**9) / (2 **(math.floor(block["height"]/100000)))
 
     for transaction in block["transactions"]:
         if transaction["sender"] == "0000000000000000000000000000000000000000000000000000000000000000":
@@ -56,6 +61,9 @@ def verifyBlock(block):
                 return False
             elif ((transaction["outputs"][0][1]) + (transaction["outputs"][1][1])) != block_reward:
                 return False
+
+    if (block["header"] != stringHash(json.dumps(block["transactions"]) + str(block["previousBlock"]) + str(block["timeStamp"]))):
+        return False
 
     if (addHash(rawHash(block["header"]), int(block["nonce"], 16)) != block["proof"]):
         return False
@@ -73,7 +81,7 @@ def verifyTransaction(blockchain, transaction):
 
     #generating information on sender:
     userBal = generateBalance(blockchain, transaction["sender"])
-    minerFee = len(str(json.dumps(transaction))) * 100
+    minerFee = len(str(json.dumps(transaction))) * (transaction["txamount"]//10000000000) * 1000
 
     
     try:
@@ -140,7 +148,7 @@ class blockChain:
         self.blockchain = []
         self.chainDict = []
         genesis = block(self)
-        genesis.difficulty = "{:016x}".format(200000)
+        genesis.difficulty = "{:016x}".format(167777777)
         genesis.complete(time.time())
         mine(genesis, miner, self)
         self.blockchain.append(genesis)
@@ -217,36 +225,36 @@ class block:
     
     def addTransaction(self, blockchain, transaction):
         if verifyTransaction(blockchain, transaction) == True:
-            self.transactions.append(transaction)
+            self.transactions.append(transaction.__dict__)
 
     def complete(self, timestamp): 
         self.timeStamp = round(timestamp, 2)
-        self.header = stringHash(json.dumps([(x.__dict__) for x in self.transactions]) + str(self.previousBlock))
+        self.header = stringHash(json.dumps(self.transactions) + str(self.previousBlock) + str(self.timeStamp))
 
 
     def addBlockToChain(self, blockchain, nonce, miner):
         #adding fees to all transactions in block
-        size, fee = 0, 0
-        for y,x in enumerate(self.transactions):
-            try:
-                size = len(str(json.dumps(self.transactions[y])))
-            except: 
-                size = len(str(json.dumps(self.transactions[y].__dict__)))
-            
-            try:
-                self.transactions[y] = self.transactions[y].__dict__
-            except:
-                self.transactions[y] = self.transactions[y]
-            
-            fee = size * 100
+        size = 0
 
-            self.transactions[y]["outputs"][0] = [self.transactions[y]["outputs"][0][0], self.transactions[y]["txamount"] - fee]
-            self.transactions[y]["outputs"].append([miner, fee])
+        for y, x in enumerate(self.transactions):
+            try:
+                self.transactions[y] = x.__dict__
+            except:
+                pass
+
+
+        for y,x in enumerate(self.transactions):
+            if (x["sender"] != "0000000000000000000000000000000000000000000000000000000000000000"):
+                size = len(str(json.dumps(self.transactions[y])))
+                fee = self.transactions[y]["txamount"]//10000
+                if fee == 0: fee = size
+
+                self.transactions[y]["outputs"][0] = [self.transactions[y]["outputs"][0][0], int(self.transactions[y]["txamount"] - fee)]
+                self.transactions[y]["outputs"].append([miner, int(fee)])
 
         #formatting for saving chain
         self.miner = miner
         self.nonce = hex(nonce)
-        self.main_chain = True
         self.tx_num = len(self.transactions)
 
         #murkleTree = MerkleTree(self.transactions, stringHash)
@@ -262,9 +270,8 @@ class transaction:
         self.timestamp = round(timestamp, 2)
         self.sender = sender
         self.outputs = [[reciever, amount]]
-        self.txamount = amount
+        self.txamount = int(amount)
         self.txhash = stringHash(sender + reciever + str(self.timestamp))
-        self.verifications = 0
         self.nonce = '{:x}'.format(nonce)
         self.sign()
         
@@ -350,11 +357,11 @@ def mine(block, miner, blockchain):
     startTime = time.time()
 
     for a in range(2 ** 32):
-        diff = arbDifficulty(block.difficulty)
+        diff = int(arbDifficulty(block.difficulty),2)
+
         for x in range(2 ** 32):
-            calculated = addHash(hash, x)
-            
-            if (int(calculated, 16) < int(diff, 2)):
+            if (int(addHash(hash, x), 16) < diff):
+                calculated = addHash(hash, x)
                 print("Found nonce: " + str(x + (a*(2**32))) + "; Alterations: " + str(a))
                 print("Hash: " + calculated)
                 
@@ -367,7 +374,7 @@ def mine(block, miner, blockchain):
                 except:
                     print("infinite luck")
 
-                block.transactions.append(transaction(''.join([("0") for x in range(64)]), miner.publicHex, 50000000000, round(time.time(), 2), miner.retrievePrivate(password), miner.retrieveNonce()))
+                block.transactions.append(transaction(''.join([("0") for x in range(64)]), miner.publicHex, (100 * 10**9) / (2 **(math.floor(block.height/100000))), round(time.time(), 2), miner.retrievePrivate(password), miner.retrieveNonce()))
                 block.proof = calculated
                 block.addBlockToChain(blockchain, x, miner.publicHex)
                 return

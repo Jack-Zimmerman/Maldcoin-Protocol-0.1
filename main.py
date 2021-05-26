@@ -25,17 +25,19 @@ from merklelib import MerkleTree
 
 import time
 import os
+import random
 import json
 import ecdsa
 import codecs
 import cryptocode
 import zlib, base64
+import socket
 
-"""
+from fullnode import writeKnownData
+
+
 password = input("password for wallet: ")
 inputPassword(password)
-
-block_reward = 50000000000
 
 wallet1 = wallet()
 wallet1.publicHex = wallet1.retrievePublic()
@@ -45,18 +47,15 @@ blockchain = blockChain()
 blockchain.syncChain()
 
 
-for x in range(87):
+for x in range(5):
     block1 = block(blockchain)
+
+    block1.addTransaction(blockchain, wallet1.simpleTransaction(password, hex(random.getrandbits(256)), 10000))
         
     block1.complete(time.time())
     mine(block1, wallet1, blockchain)
 
-print(json.dumps(wallet1.simpleTransaction(password, stringHash("lmao??????"), 550000000).__dict__))
 
 
 blockchain.writeToFile()
-blockchain.decompressFile()
-"""
-
-
-os.system("python fullnode.py")
+writeKnownData()

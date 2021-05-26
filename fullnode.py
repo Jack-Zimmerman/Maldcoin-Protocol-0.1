@@ -1,18 +1,5 @@
 #text encoding is in ISO-8859-1
 
-#pip libraries
-import hashlib 
-import merklelib 
-
-import time
-import json
-import ecdsa
-import codecs
-import cryptocode
-import zlib, base64
-import socket
-import threading
-
 #grabbing blockchain external functions:
 from blockchainFunctions import stringHash
 from blockchainFunctions import rawHash
@@ -33,10 +20,24 @@ from blockchainFunctions import block
 
 #grabbing network protocol external functions:
 from ConnectionFunctions import fullmsg
+from ConnectionFunctions import grabPublicIp
 
 #grabbing network protocol external classes:
 from ConnectionFunctions import ClientConnection
 from ConnectionFunctions import Server
+
+#pip libraries
+import hashlib 
+import merklelib 
+
+import time
+import json
+import ecdsa
+import codecs
+import cryptocode
+import zlib, base64
+import socket
+import threading
 
 blockchain = blockChain()
 blockchain.syncChain()
@@ -64,14 +65,12 @@ def writeKnownData():
 
 
 
-class handleRequest:
-    def __init__(self, request):
+class nodeCommand:
+    def __init__(self):
+        pass
+
+    def handleRequest(self, request):
         self.request = request
-
-    def updateRequest(self, new):
-        self.request = new
-
-    def handleRequest(self):
         try:
             if self.request.startswith("00000000000000000000000000000000GETCHAINDATA00000000000000000000000000000000"):
                 return self.getchaindata()
@@ -123,10 +122,11 @@ class handleRequest:
             return "DECLINED" + grabbedBlock["header"]
 
 
+    
 #Server Start:
 
-fullNodeServer = Server(socket.gethostbyname(socket.gethostname()), 1234, 10)
-
+#fullNodeServer = Server(socket.gethostbyname(socket.gethostname()), 1234, 10)
+"""
 def requestHandler():
 	while True:
 		for i in range(len(fullNodeServer.connections)):
@@ -142,8 +142,17 @@ requestHandlerThread = threading.thread(target=requestHandler)
 acceptConnectionsThread.start()
 
 requestHandlerThread.start()
+"""
+"""
+#Connection Tester
+while True:
+	fullNodeServer.recievemsg(fullNodeServer.connections[1][0])
+	try:
+		fullNodeServer.s.connect(("67.161.43.140", 1234))
+		fullNodeServer.sendataspecfic(1, fullNodeServer.connections[1][0])
+	except:
+		fullNodeServer.sendataspecfic()
 
-
-
-#request = handleRequest(message)
-#toReturn = request.handleRequest()
+    #ip = grabPublicIp()
+"""
+	
