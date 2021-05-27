@@ -246,8 +246,8 @@ class block:
         for y,x in enumerate(self.transactions):
             if (x["sender"] != "0000000000000000000000000000000000000000000000000000000000000000"):
                 size = len(str(json.dumps(self.transactions[y])))
-                fee = self.transactions[y]["txamount"]//10000
-                if fee == 0: fee = size
+            
+                fee = size ** 2
 
                 self.transactions[y]["outputs"][0] = [self.transactions[y]["outputs"][0][0], int(self.transactions[y]["txamount"] - fee)]
                 self.transactions[y]["outputs"].append([miner, int(fee)])
@@ -269,7 +269,7 @@ class transaction:
         privKey = privkey
         self.timestamp = round(timestamp, 2)
         self.sender = sender
-        self.outputs = [[reciever, amount]]
+        self.outputs = [[reciever, int(amount)]]
         self.txamount = int(amount)
         self.txhash = stringHash(sender + reciever + str(self.timestamp))
         self.nonce = '{:x}'.format(nonce)

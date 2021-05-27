@@ -49,19 +49,29 @@ def writeKnownData():
     global blockchain
     knownAccounts = []
 
+    data = {"bals" : {}, "noncesUsed": {}}
+
     for x in blockchain.chainDict:
         for y in x["transactions"]:
             for z in y["outputs"]:
                 if z[0] not in knownAccounts:
                     knownAccounts.append(z[0])
 
-    data = {"bals" : {}}
+    for account in knownAccounts:
+        nonces = []
+
+        for y in blockchain.chainDict:
+            for z in y["transactions"]:
+                if (z["sender"] == account):
+                    nonces.append(int(z["nonce"], 16))
+
+        data["noncesUsed"][account] = nonces
 
     for account in knownAccounts:
-        data["bals"][account] = generateBalance(blockchain, account)
+        data["bals"][account] = generateBalance(blockchain, account) 
 
     with open("knownData.dat", "w") as knownFile:
-        knownFile.write(json.dumps(data))
+        knownFile.write(json.dumps(data, indent=4))
 
 
 
@@ -80,6 +90,12 @@ class nodeCommand:
                 return self.returnBalance()
             elif self.request.startswith("00000000000000000000000000000000BLOCK00000000000000000000000000000000"):
                 return self.addBlock()
+            elif self.request.startswith("00000000000000000000000000000000LISTRANSACTIONS00000000000000000000000000000000"):
+                return self.listTransactions()
+            elif self.request.startswith("00000000000000000000000000000000GETBLOCKCOUNT00000000000000000000000000000000"):
+                return blockchain.size
+            elif self.request.startswith("00000000000000000000000000000000DIFFICULTY00000000000000000000000000000000"):
+                return blockchain.chainDict[-1]["difficulty"]
         except:
             return "INVALID_REQUEST"
 
@@ -120,6 +136,32 @@ class nodeCommand:
             return "ACCEPTED" + grabbedBlock["header"]
         else:
             return "DECLINED" + grabbedBlock["header"]
+
+    def listTransactions(self):
+        global blockchain
+
+        account =  self.request.replace("00000000000000000000000000000000LISTRANSACTIONS00000000000000000000000000000000", "")
+
+
+        tiedTransactions = []
+    
+        for x in blockchain.chainDict:
+            for y in x["transactions"]:
+                if y["sender"] == account:
+                    tiedTransactions.append(y)
+                else:
+                    for output in y["outputs"]:
+                        if (output[0] == account):
+                            tiedTransactions.append(y)
+                            break
+
+
+        return tiedTransactions
+
+
+
+
+
 
 
     

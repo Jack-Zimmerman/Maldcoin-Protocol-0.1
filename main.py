@@ -34,6 +34,7 @@ import zlib, base64
 import socket
 
 from fullnode import writeKnownData
+from fullnode import nodeCommand
 
 
 password = input("password for wallet: ")
@@ -46,11 +47,14 @@ wallet1.publicHex = wallet1.retrievePublic()
 blockchain = blockChain()
 blockchain.syncChain()
 
+node = nodeCommand()
+print(node.handleRequest("00000000000000000000000000000000DIFFICULTY00000000000000000000000000000000"))
 
-for x in range(5):
+"""
+for x in range(1):
     block1 = block(blockchain)
 
-    block1.addTransaction(blockchain, wallet1.simpleTransaction(password, hex(random.getrandbits(256)), 10000))
+    block1.addTransaction(blockchain, wallet1.simpleTransaction(password, hex(random.getrandbits(256)), 10000000000))
         
     block1.complete(time.time())
     mine(block1, wallet1, blockchain)
@@ -58,4 +62,7 @@ for x in range(5):
 
 
 blockchain.writeToFile()
+blockchain.decompressFile()
+
 writeKnownData()
+"""
