@@ -168,6 +168,7 @@ class nodeCommand:
 #Server Start:
 
 #fullNodeServer = Server(socket.gethostbyname(socket.gethostname()), 1234, 10)
+#print(grabPublicIp())
 """
 def requestHandler():
 	while True:
@@ -186,15 +187,18 @@ acceptConnectionsThread.start()
 requestHandlerThread.start()
 """
 """
+fullNodeServer.acceptconnections()
+time.sleep(1)
 #Connection Tester
 while True:
-	fullNodeServer.recievemsg(fullNodeServer.connections[1][0])
-	try:
-		fullNodeServer.s.connect(("67.161.43.140", 1234))
-		fullNodeServer.sendataspecfic(1, fullNodeServer.connections[1][0])
-	except:
-		fullNodeServer.sendataspecfic()
+    fullNodeServer.recievemsg(fullNodeServer.connections[1][0])
+    try:
+        fullNodeServer.s.connect((grabPublicIp(), 1234))
+        fullNodeServer.sendataspecfic(1, fullNodeServer.connections[1][0])
+    except:
+        fullNodeServer.sendataspecfic()
 
     #ip = grabPublicIp()
 """
+#end
 	
