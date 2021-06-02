@@ -7,6 +7,7 @@ import json
 import ecdsa
 import codecs
 import cryptocode
+import base58
 import zlib, base64
 
 password = ""
@@ -19,6 +20,11 @@ def inputPassword(new):
     global password
     password = new 
 
+def compressAddress(public):
+    unencoded_string = bytes.fromhex(public)
+    encoded_string = base58.b58encode(unencoded_string)
+
+    return encoded_string.decode("utf-8")
 ##############################################################################
 #Hash functions for varying usage
 
@@ -82,6 +88,16 @@ def verifyTransaction(blockchain, transaction):
     #generating information on sender:
     userBal = generateBalance(blockchain, transaction["sender"])
     minerFee = len(str(json.dumps(transaction))) * (transaction["txamount"]//10000000000) * 1000
+
+    nonces = []
+    account = transaction['sender']
+    for y in blockchain.chainDict:
+        for z in y["transactions"]:
+            if (z["sender"] == account):
+                nonces.append(z['nonce'])
+
+    if transaction['nonce'] in nonces:
+        return False
 
     
     try:
@@ -148,7 +164,7 @@ class blockChain:
         self.blockchain = []
         self.chainDict = []
         genesis = block(self)
-        genesis.difficulty = "{:016x}".format(167777777)
+        genesis.difficulty = "{:016x}".format(1)
         genesis.complete(time.time())
         mine(genesis, miner, self)
         self.blockchain.append(genesis)
@@ -165,7 +181,7 @@ class blockChain:
             data =  base64.b64encode(zlib.compress(data.encode('ISO-8859-1'),9))
             data = data.decode('ISO-8859-1')
 
-            file = open("blockchain.dat", 'w')
+            file = open("blockchain.dat", 'a')
             file.write(data)
             file.close()
             return True
@@ -204,7 +220,8 @@ class block:
 
         if (self.height != 0):
             self.previousBlock = blockchain.chainDict[-1]["proof"] 
-            self.difficulty = self.calculateDifficuty(blockchain)
+            #self.difficulty = self.calculateDifficuty(blockchain)
+            self.difficulty = "{:016x}".format(1000)
         else:
             self.previousBlock = "0"
             self.difficulty = "{:016x}".format(1000)
@@ -278,6 +295,7 @@ class transaction:
         
     def sign(self):
         global privKey
+        global sender
         self.signed = ecdsa.SigningKey.from_string(bytes.fromhex(privKey),curve=ecdsa.SECP256k1, hashfunc=hashlib.sha256).sign(bytes(self.txhash + self.nonce, 'ISO-8859-1')).hex()
         
 
@@ -350,7 +368,7 @@ class wallet:
 ##############################################################################
 #non class functions
     
-
+#cpu mining
 def mine(block, miner, blockchain):
     global password 
     hash = rawHash(block.header)
