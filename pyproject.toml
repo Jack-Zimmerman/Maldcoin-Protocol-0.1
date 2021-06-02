@@ -10,6 +10,8 @@ merklelib = "^1.0"
 ecdsa = "^0.16.1"
 cryptography = "^3.4.7"
 cryptocode = "^0.1"
+base58 = "^2.1.0"
+pyperclip = "^1.8.2"
 
 [tool.poetry.dev-dependencies]
 
