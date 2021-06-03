@@ -36,15 +36,15 @@ syncingLabel.grid()
 syncingLabel.place(relx=0.5,rely=0.4,anchor='center')
 syncingLabel.update()
 
-
+#chain sync protocol 
 blockchain.syncChain()
-
 syncingWindow.destroy()
 #Syncing blockchain END
 
-main = tk.Tk()
+
 
 #main window config START
+main = tk.Tk()
 main.title("ShitCoin Core 0.1")
 main.geometry("600x400")
 main.resizable(False, False)
@@ -65,7 +65,13 @@ enterPassword.geometry("200x100")
 enterPassword.resizable(False, False)
 enterPassword.lift()
 
-passwordPrompt = tk.Label(enterPassword, text="Enter Password:")
+#prompt changes depending on whether account is new or not
+if os.path.isfile("wallet.dat"):
+    prompt = "Enter Password: "
+else:
+    prompt = "Enter Password for new wallet: "
+
+passwordPrompt = tk.Label(enterPassword, text=prompt)
 passwordPrompt.grid()
 passwordPrompt.place(relx=0.5, rely=0.15, anchor='center')
 
@@ -128,7 +134,7 @@ def login(temp):
 
             try:
                 if (cryptocode.decrypt(walletDict["privateHex"], password) == False):
-                    messagebox.showwarning("PASSWORD ERROR", "Incorrect Password")
+                    messagebox.showwarning("PASSWORD ERROR[1]", "Incorrect Password")
                 else:
                     wallet.private = cryptocode.decrypt(walletDict["privateHex"], password)
                     enterPassword.destroy()
@@ -144,6 +150,19 @@ def login(temp):
             copyAddress.place(relx=0.9, rely=0.4, anchor='center')
     else:
         wallet.generateKeys(password)
+        enterPassword.destroy()
+
+        with open("wallet.dat", "r") as wallet:
+            walletDict = json.loads(wallet.read())
+
+
+            wallet.public = walletDict["publicHex"]
+            balanceLabel.config(text=str(round(generateBalance(blockchain, wallet.public)/1000000000, 9)) + " SHT")
+            accountLabel.config(text="Account: " + str(compressAddress(wallet.public)),background="white")
+
+            copyAddress = tk.Button(account, text="copy", command=lambda: pyperclip.copy(compressAddress(wallet.public)),width=10,height=2, font=("Roboto", 12))
+            copyAddress.grid()
+            copyAddress.place(relx=0.9, rely=0.4, anchor='center')
 
 
 

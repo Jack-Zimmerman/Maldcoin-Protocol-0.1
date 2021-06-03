@@ -99,6 +99,7 @@ def verifyTransaction(blockchain, transaction):
     if transaction['nonce'] in nonces:
         return False
 
+
     
     try:
         ecdsa.VerifyingKey.from_string(bytes.fromhex(transaction["sender"]),curve=ecdsa.SECP256k1, hashfunc=hashlib.sha256).verify(bytes.fromhex(transaction["signed"]),bytes(transaction["txhash"] + transaction["nonce"], "ISO-8859-1"))
@@ -114,6 +115,9 @@ def verifyTransaction(blockchain, transaction):
             
         if total > userBal: 
             return False 
+
+        if total < 1:
+            return False
 
         if total < minerFee:
             return False
