@@ -96,15 +96,18 @@ class ClientConnection():
 # TCP Server
 class Server():
     def __init__(self, hosting_ip, port, num_connections):
+
         self.hosting_ip = hosting_ip
         self.port = port
         s.bind((hosting_ip, port))
         s.listen(num_connections)
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
         self.connections = {}
         self.finalmsgS = ""
         self.numTotalConnections = 0
         self.numCurrentConnections = 0
+
         print("Iniated Server at " + str(self.hosting_ip))
 
     def acceptconnections(self, printOut = True):
@@ -150,32 +153,19 @@ class Server():
             j = 0
             headercv1 = False
 
+    def closeConnection(self, clientSocket):
+        clientSocket.close()
+
+
 
 #Full Node Class
 
-class FullNode():
 
-    def __init__(self, hostingIPAdress, programs):
-        self.hostingIPAdress = hostingIPAdress
-        self.server = Server(hostingIPAdress, 1234, 5)
-        self.progams = programs
-        print(self.progams)
-
-
-    def accecptConnections(self):
-        def acceptConnectionsThread():
-            while True:
-                self.server.acceptconnections(False)
-                self.server.numCurrentConnections = len(self.server.connections)
-
-        #Threading the connection accecptor
-        acceptingConnectionsThread = threading.Thread(target=acceptConnectionsThread)
-        acceptingConnectionsThread.start()
 
 
 
 	
-#Test
+
 
 #print("lol")
 #clientTest = ClientConnection("67.161.43.140", 1234)
