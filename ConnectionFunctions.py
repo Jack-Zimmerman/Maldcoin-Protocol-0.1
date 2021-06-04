@@ -47,44 +47,51 @@ def fullmsg(message):
 class ClientConnection():
     def __init__(self, ip, port):
         self.ipconnection = ip
+
         self.portconnection = port
-        self.finalmsg = ""
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.s.connect((self.ipconnection, self.portconnection))
+        self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+
+        self.clientSocket.connect((self.ipconnection, self.portconnection))
+
         print("Connected")
+        self.finalmsg = ""
+        self.dataRecieved = 0
+        self.msgDone = False
+        self.headerRcv = False
+
 
     def recievemsg(self):
-        global headercv
-        global msgdone
-        global f
-        global msglen
-
-        if headercv == False:
-            f = int(self.s.recv(10).decode("ISO-8859-1"))
-            headercv = True
-            msgdone = False
-            self.finalmsg = ""
-            self.recievemsg()
-        elif msgdone == False:
-            msg = self.s.recv(10000)
-            self.finalmsg += msg.decode("ISO-8859-1")
-            f -= len(msg)
-            if f == 0:
-                msgdone = True
+        if self.headerRcv == False:
+            self.finalmsgS = ""
+            try:
+                self.numConnection = int(self.clientSocket.recv(10).decode("utf-8"))
+                self.headerRcv = True
+                self.msgDone = False
+                self.recievemsg()
+            except:
+                return
+        elif self.msgDone == False:
+            msg = self.clientSocket.recv(10)
+            self.finalmsg += msg.decode("utf-8")
+            self.numConnection -= len(msg)
+            if self.numConnection == 0:
+                self.msgDone = True
             self.recievemsg()
         else:
-            f = 0
-            headercv = False
-            return self.finalmsg
+            self.numConnection = 0
+            self.headerRcv = False
+            return
+
 
     def sendmsg(self, msg):
-        self.s.send(bytes(fullmsg(self.msg)))
+        self.clientSocket.send(bytes(fullmsg(msg)))
+
 
     def recieverealtime(self):
         while True:
             self.recievemsg()
             print(self.finalmsg)
-
 
 # TCP Server
 class Server():
@@ -96,16 +103,19 @@ class Server():
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connections = {}
         self.finalmsgS = ""
+        self.numTotalConnections = 0
+        self.numCurrentConnections = 0
         print("Iniated Server at " + str(self.hosting_ip))
 
-    def acceptconnections(self):
-        global h
+    def acceptconnections(self, printOut = True):
 
         while True:
             clientsocket, address = s.accept()
-            self.connections["Connection" + str(h)] = [clientsocket, address]
-            print(self.connections["Connection" + str(h)][1])
-            h += 1
+            self.connections["Connection" + str(self.numTotalConnections)] = [clientsocket, address]
+            if printOut == True:
+                print(self.connections["Connection" + str(self.numTotalConnections)][1])
+            self.numTotalConnections += 1
+            break
 
     def sendataspecfic(self, data, clientsocket):
             clientsocket.send(bytes(fullmsg(data), "utf-8"))
@@ -139,8 +149,33 @@ class Server():
         else:
             j = 0
             headercv1 = False
-	
 
+
+#Full Node Class
+
+class FullNode():
+
+    def __init__(self, hostingIPAdress, programs):
+        self.hostingIPAdress = hostingIPAdress
+        self.server = Server(hostingIPAdress, 1234, 5)
+        self.progams = programs
+        print(self.progams)
+
+
+    def accecptConnections(self):
+        def acceptConnectionsThread():
+            while True:
+                self.server.acceptconnections(False)
+                self.server.numCurrentConnections = len(self.server.connections)
+
+        #Threading the connection accecptor
+        acceptingConnectionsThread = threading.Thread(target=acceptConnectionsThread)
+        acceptingConnectionsThread.start()
+
+
+
+	
+#Test
 
 #print("lol")
 #clientTest = ClientConnection("67.161.43.140", 1234)
