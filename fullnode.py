@@ -159,12 +159,64 @@ class nodeCommand:
         return tiedTransactions
 
 
+class FullNode():
+
+    def __init__(self, hostingIPAdress, programs):
+        self.hostingIPAdress = hostingIPAdress
+        self.server = Server(hostingIPAdress, 1234, 5)
+        self.progams = programs
+        self.consoleOutputInfo = []
+
+        print(self.progams)
+
+    def consoleOutput(self):
+
+        # Defining the thread
+        def consoleOutputThread():
+            while True:
+                for i in range(len(self.consoleOutputInfo)):
+                    if self.consoleOutputInfo[i][0] == True:
+                        self.consoleOutputInfo[i][0] = False
+                        print(str(self.consoleOutputInfo[i][1]))
+
+        # Threading Console Output
+        consoleOutputThread = threading.Thread(target=consoleOutputThread)
+        consoleOutputThread.start()
+
+
+    def accecptConnections(self):
+
+        # Defining the thread
+        def acceptConnectionsThread():
+            while True:
+                self.server.acceptconnections(False)
+                self.server.numCurrentConnections = len(self.server.connections)
+
+        # Threading the connection accecptor
+        acceptingConnectionsThread = threading.Thread(target=acceptConnectionsThread)
+        acceptingConnectionsThread.start()
+
+
+    def handleRequests(self):
+
+        # Defining the thread
+        def handleRequestsThread():
+            while True:
+                for i in range(len(self.server.connections)):
+                    self.server.recievemsg(self.server.connections["Connection" + str((i + 1))][0])
+                    request = nodeCommand(self.server.finalmsg)
+                    toReturn = request.handleRequest()
+                    self.server.sendataspecfic(toReturn, self.server.connections["Connection" + str((i + 1))][0])
+
+        #Threading Handle Requests
+        handleRequestsThread = threading.Thread(target=handleRequestsThread)
+        handleRequestsThread.start()
 
 
 
 
 
-    
+
 #Server Start:
 
 #fullNodeServer = Server(socket.gethostbyname(socket.gethostname()), 1234, 10)
