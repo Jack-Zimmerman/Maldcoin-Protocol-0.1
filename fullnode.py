@@ -199,11 +199,13 @@ class FullNode():
         # Defining the thread
         def handleRequestsThread():
             while True:
-                for i in range(len(self.server.connections)):
-                    self.server.recievemsg(self.server.connections["Connection" + str((i + 1))][0])
-                    request = nodeCommand(self.server.finalmsg)
-                    toReturn = request.handleRequest()
-                    self.server.sendataspecfic(toReturn, self.server.connections["Connection" + str((i + 1))][0])
+                connectionsList = list(self.server.connections.values())
+                for i in range(len(connectionsList)):
+                    self.server.recievemsg(connectionsList[i][0])
+                    request = nodeCommand()
+                    toReturn = request.handleRequest(self.server.finalmsgS)
+                    self.server.sendataspecfic(toReturn, connectionsList[i][0])
+                    self.consoleOutputInfo = str(toReturn) + str(connectionsList[i][1])
 
         # Threading Handle Requests
         handleRequestsThread = threading.Thread(target=handleRequestsThread)
