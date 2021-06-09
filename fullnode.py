@@ -75,42 +75,41 @@ def writeKnownData():
 
 
 class nodeCommand:
-    def __init__(self):
+    def __init__(self,blockchain):
+        self.blockchain = blockchain.chainDict
+        self.blockchainSize = blockchain.size
         pass
 
     def handleRequest(self, request):
         self.request = request
         try:
             if self.request.startswith("00000000000000000000000000000000GETCHAINDATA00000000000000000000000000000000"):
-                return self.getchaindata()
+                return self.getchaindata(self.blockchain)
             elif self.request.startswith("00000000000000000000000000000000TRANSACTION00000000000000000000000000000000"):
-                return self.recieveTransaction()
+                return self.recieveTransaction(self.blockchain)
             elif self.request.startswith("00000000000000000000000000000000BALANCE00000000000000000000000000000000"):
-                return self.returnBalance()
+                return self.returnBalance(self.blockchain)
             elif self.request.startswith("00000000000000000000000000000000BLOCK00000000000000000000000000000000"):
-                return self.addBlock()
+                return self.addBlock(self.blockchain)
             elif self.request.startswith(
                     "00000000000000000000000000000000LISTRANSACTIONS00000000000000000000000000000000"):
-                return self.listTransactions()
+                return self.listTransactions(self.blockchain)
             elif self.request.startswith(
                     "00000000000000000000000000000000GETBLOCKCOUNT00000000000000000000000000000000"):
-                return blockchain.size
+                return self.blockchainSize
             elif self.request.startswith("00000000000000000000000000000000DIFFICULTY00000000000000000000000000000000"):
-                return blockchain.chainDict[-1]["difficulty"]
+                return self.blockchain[-1]["difficulty"]
         except:
             return "INVALID_REQUEST"
 
-    def getchaindata(self):
-        global blockchain
-
+    def getchaindata(self, blockchain):
         request = json.loads(
             self.request.replace("00000000000000000000000000000000GETCHAINDATA00000000000000000000000000000000", ""))
 
         return blockchain.chainDict[request[0]: request[1]]
         # returns blockchain data from block of height index1 to block of height index2
 
-    def recieveTransaction(self):
-        global blockchain
+    def recieveTransaction(self,blockchain):
         grabbedTransaction = json.loads(
             self.request.replace("00000000000000000000000000000000TRANSACTION00000000000000000000000000000000", ""))
 
@@ -120,15 +119,13 @@ class nodeCommand:
         else:
             return "DECLINED" + grabbedTransaction["txhash"]
 
-    def returnBalance(self):
-        global blockchain
+    def returnBalance(self,blockchain):
 
         account = self.request.replace("00000000000000000000000000000000BALANCE00000000000000000000000000000000", "")
 
         return generateBalance(blockchain, account)
 
-    def addBlock(self):
-        global blockchain
+    def addBlock(self,blockchain):
 
         grabbedBlock = json.loads(
             self.request.replace("00000000000000000000000000000000BLOCK00000000000000000000000000000000", ""))
@@ -139,8 +136,7 @@ class nodeCommand:
         else:
             return "DECLINED" + grabbedBlock["header"]
 
-    def listTransactions(self):
-        global blockchain
+    def listTransactions(self,blockchain):
 
         account = self.request.replace(
             "00000000000000000000000000000000LISTRANSACTIONS00000000000000000000000000000000", "")
@@ -243,4 +239,3 @@ while True:
     #ip = grabPublicIp()
 """
 # end
-
