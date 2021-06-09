@@ -95,11 +95,9 @@ style.theme_settings(current_theme, {"TNotebook.Tab": {"configure": {"padding": 
 tabControl = ttk.Notebook(main,height=400,width=600)
 account = ttk.Frame(tabControl)
 send = ttk.Frame(tabControl)
-history = ttk.Frame(tabControl)
 contacts = ttk.Frame(tabControl)
 tabControl.add(account, text='Account')
 tabControl.add(send, text='Send')
-tabControl.add(history, text='History')
 tabControl.add(contacts, text='Contacts')
 tabControl.grid(row=1, column=0, sticky=tk.NSEW)
 
@@ -148,13 +146,16 @@ def login(temp):
             copyAddress = tk.Button(account, text="copy", command=lambda: pyperclip.copy(compressAddress(wallet.public)),width=10,height=2, font=("Roboto", 12))
             copyAddress.grid()
             copyAddress.place(relx=0.9, rely=0.4, anchor='center')
+
+            #Rendering rest of wallet START
+            renderSend()
+            #Rendring rest of wallet END
     else:
         wallet.generateKeys(password)
         enterPassword.destroy()
 
         with open("wallet.dat", "r") as wallet:
             walletDict = json.loads(wallet.read())
-
 
             wallet.public = walletDict["publicHex"]
             balanceLabel.config(text=str(round(generateBalance(blockchain, wallet.public)/1000000000, 9)) + " SHT")
@@ -164,7 +165,16 @@ def login(temp):
             copyAddress.grid()
             copyAddress.place(relx=0.9, rely=0.4, anchor='center')
 
+def renderSend():
+    global send
 
+    sendMat = tk.Label(send, text="Send Shitcoins", font=("Bold", 25))
+    sendMat.grid()
+    sendMat.place(relx=0.3, rely=0.1,anchor='center')
+
+    newTransaction = tk.Button(send, text="New Transaction", width=15,font=("Bold", 15))
+    newTransaction.grid()
+    newTransaction.place(relx=0.7, rely=0.1, anchor='center')
 
 
 
