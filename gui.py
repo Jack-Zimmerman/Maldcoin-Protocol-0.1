@@ -10,6 +10,7 @@ from blockchainFunctions import wallet
 from blockchainFunctions import generateBalance
 from blockchainFunctions import blockChain
 from blockchainFunctions import compressAddress
+from blockchainFunctions import decompressAddress
 
 from PIL import Image, ImageTk
 import tkinter as tk
@@ -40,6 +41,8 @@ syncingLabel.update()
 blockchain.syncChain()
 syncingWindow.destroy()
 #Syncing blockchain END
+
+
 
 
 
@@ -168,15 +171,71 @@ def login(temp):
 def renderSend():
     global send
 
+    def newTransactionWindow():
+        #tx variables:
+        global outputs
+        outputs = []
+
+        def newOutput():
+            global outputs
+            newOut = tk.Tk()
+            newOut.title("New Output")
+            newOut.geometry("400x100")
+            newOut.resizable(False,False)
+
+            recieverLabel = tk.Label(newOut, text="Reciever: ", font=("Arial", 10))
+            recieverLabel.grid()
+            recieverLabel.place(relx=0.13, rely=0.2, anchor='center')
+
+            reciverInput = tk.Entry(newOut, width=50)
+            reciverInput.grid()
+            reciverInput.place(relx=0.6, rely=0.2,anchor='center')
+
+            amountLabel = tk.Label(newOut, text="Amount: ", font=("Arial", 10))
+            amountLabel.grid()
+            amountLabel.place(relx=0.13, rely=0.45, anchor='center')
+
+            amountInput = tk.Entry(newOut, width=15)
+            amountInput.grid()
+            amountInput.place(relx=0.335, rely=0.45, anchor='center')
+
+            def addOutputFunc(newOut, reciever, amount):
+                global outputs
+
+                reciver = decompressAddress(reciever)
+                amount = float(amount)
+                outputs.append([reciver, amount])
+
+                newOut.destroy()
+
+            addOutput = tk.Button(newOut, width=15, text="Add Output", font=("Arial", 10),command=lambda:addOutputFunc(newOut, reciverInput.get(), amountInput.get()))
+            addOutput.grid()
+            addOutput.place(relx=0.5, rely=0.8, anchor = 'center')
+
+        txWin = tk.Tk()
+        txWin.title("New Transaction")
+        txWin.geometry("400x300")
+        txWin.resizable(False, False)
+
+        newOutputLabel = tk.Button(txWin, text="New Output", font=("Arial", 15), command=newOutput)
+        newOutputLabel.grid()
+        newOutputLabel.place(relx=0.2,rely=0.1,anchor='center')
+
+
     sendMat = tk.Label(send, text="Send Shitcoins", font=("Bold", 25))
     sendMat.grid()
     sendMat.place(relx=0.3, rely=0.1,anchor='center')
 
-    newTransaction = tk.Button(send, text="New Transaction", width=15,font=("Bold", 15))
+    newTransaction = tk.Button(send, text="New Transaction", width=15,font=("Bold", 15), command=newTransactionWindow)
     newTransaction.grid()
     newTransaction.place(relx=0.7, rely=0.1, anchor='center')
 
 
 
-#mainloops
+
+
+
+
+
+    #mainloops
 main.mainloop()
