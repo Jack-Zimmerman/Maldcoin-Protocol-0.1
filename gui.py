@@ -11,6 +11,8 @@ from blockchainFunctions import generateBalance
 from blockchainFunctions import blockChain
 from blockchainFunctions import compressAddress
 from blockchainFunctions import decompressAddress
+from blockchainFunctions import verifyTransaction
+from blockchainFunctions import transaction
 
 from PIL import Image, ImageTk
 import tkinter as tk
@@ -170,14 +172,39 @@ def login(temp):
 
 def renderSend():
     global send
+    global wallet
+    global password
+    global blockchain
 
     def newTransactionWindow():
+        txWin = tk.Tk()
+        txWin.title("New Transaction")
+        txWin.geometry("400x250")
+        txWin.resizable(False, False)
+
         #tx variables:
         global outputs
+        global blockchain
+        global totalAmount
+        global totalFee
+        global wallet
+        global txAmountLabel
+        global txFeeLabel
+        global currentTx
+        global password
         outputs = []
 
+        #mechanism for grabbing new output
         def newOutput():
             global outputs
+            global wallet
+
+            global txAmountLabel
+            global txFeeLabel
+            global password
+            global currentTx
+            currentTx = {}
+
             newOut = tk.Tk()
             newOut.title("New Output")
             newOut.geometry("400x100")
@@ -201,26 +228,68 @@ def renderSend():
 
             def addOutputFunc(newOut, reciever, amount):
                 global outputs
-
-                reciver = decompressAddress(reciever)
-                amount = float(amount)
-                outputs.append([reciver, amount])
-
+                global password
+                global currentTx
                 newOut.destroy()
 
-            addOutput = tk.Button(newOut, width=15, text="Add Output", font=("Arial", 10),command=lambda:addOutputFunc(newOut, reciverInput.get(), amountInput.get()))
+                outputs.append([reciever, int(float(amount) * 1000000000)])
+
+                with open("wallet.dat","r") as wallet:
+                    data = json.loads(wallet.read())
+                    public = data["publicHex"]
+                    private = cryptocode.decrypt(data["privateHex"], password)
+
+                    #reading and updating nonce
+                    nonce = data["nonce"]
+
+                with open("wallet.dat", "w") as walletWrite:
+                    data["nonce"] += 1
+                    walletWrite.write(json.dumps(data))
+
+                currentTx = transaction(public, reciever, int(float(amount) * 1000000000), time.time(), private,nonce)
+
+                for x in outputs:
+                    if not x in currentTx.outputs:
+                        currentTx.addOutput(x)
+
+                txAmountLabel.config(text="Total(+Fee): " + str(round((len(json.dumps(currentTx.__dict__)) ** 2 + currentTx.txamount)/1000000000,9)))
+                txFeeLabel.config(text="Estimated Fee: " + str(round((len(json.dumps(currentTx.__dict__)) ** 2)/1000000000,9)))
+
+
+
+                #estimating fee:
+
+            addOutput = tk.Button(newOut, width=15, text="Add Output", font=("Arial", 10),background="blue",foreground="white",command=lambda:addOutputFunc(newOut, decompressAddress(reciverInput.get()), amountInput.get()))
             addOutput.grid()
             addOutput.place(relx=0.5, rely=0.8, anchor = 'center')
 
-        txWin = tk.Tk()
-        txWin.title("New Transaction")
-        txWin.geometry("400x300")
-        txWin.resizable(False, False)
+        #tx stats
+        txAmountLabel = tk.Label(txWin, text="Total(+Fee): 0.000000000", font =("Arial",20))
+        txAmountLabel.grid()
+        txAmountLabel.place(relx=0.5, rely=0.1,anchor='center')
 
-        newOutputLabel = tk.Button(txWin, text="New Output", font=("Arial", 15), command=newOutput)
-        newOutputLabel.grid()
-        newOutputLabel.place(relx=0.2,rely=0.1,anchor='center')
+        txFeeLabel = tk.Label(txWin, text="Estimated Fee: 0.000000000", font=("Arial", 20))
+        txFeeLabel.grid()
+        txFeeLabel.place(relx=0.5, rely=0.3, anchor='center')
+        #interact with tx
+        newOutputButton = tk.Button(txWin, text="New Output",width=20, font=("Arial", 18), background="black", foreground="white", command=newOutput)
+        newOutputButton.grid()
+        newOutputButton.place(relx=0.5,rely=0.5,anchor='center')
 
+        #for confirmTxButton -> verifies transaction
+
+        def txValidCheck(rawTx):
+            global blockchain
+
+            if verifyTransaction(blockchain, rawTx):
+                tk.messagebox.showinfo("Transaction Valid", "Transaction has been submitted,\nwaiting for confirmation...")
+            else:
+                tk.messagebox.showwarning("Transaction Invalid", "Transaction is invalid")
+                
+
+        confirmTxButton = tk.Button(txWin, text="Confirm and Send", width=22, font=("Bold", 20), background="blue",foreground="white", command=lambda:txValidCheck(currentTx))
+        confirmTxButton.grid()
+        confirmTxButton.place(relx=0.5, rely=0.8, anchor='center')
 
     sendMat = tk.Label(send, text="Send Shitcoins", font=("Bold", 25))
     sendMat.grid()
@@ -229,12 +298,6 @@ def renderSend():
     newTransaction = tk.Button(send, text="New Transaction", width=15,font=("Bold", 15), command=newTransactionWindow)
     newTransaction.grid()
     newTransaction.place(relx=0.7, rely=0.1, anchor='center')
-
-
-
-
-
-
 
 
     #mainloops
