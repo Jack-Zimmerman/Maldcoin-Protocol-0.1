@@ -24,7 +24,10 @@ def compressAddress(public):
     unencoded_string = bytes.fromhex(public)
     encoded_string = base58.b58encode(unencoded_string)
 
-    return encoded_string.decode("utf-8")
+    return encoded_string.decode('ISO-8859-1')
+
+def decompressAddress(public):
+    return base58.b58decode(public).hex()
 ##############################################################################
 #Hash functions for varying usage
 
@@ -87,7 +90,7 @@ def verifyTransaction(blockchain, transaction):
 
     #generating information on sender:
     userBal = generateBalance(blockchain, transaction["sender"])
-    minerFee = len(str(json.dumps(transaction))) * (transaction["txamount"]//10000000000) * 1000
+    minerFee = len(str(json.dumps(transaction))) ** 2
 
     nonces = []
     account = transaction['sender']
@@ -159,33 +162,29 @@ def generateBalance(blockchain, account):
 
 class blockChain:
     def __init__(self):
-        self.blockchain = []
         self.chainDict = []
         self.size = len(self.chainDict)
         self.dataSize = len(json.dumps(self.chainDict)) 
 
     def createGenesis(self, miner):
-        self.blockchain = []
         self.chainDict = []
         genesis = block(self)
         genesis.difficulty = "{:016x}".format(1)
         genesis.complete(time.time())
         mine(genesis, miner, self)
-        self.blockchain.append(genesis)
         self.chainDict.append(genesis.__dict__)
 
     def addBlock(self, block):
-        self.blockchain.append(block)
         self.chainDict.append(block.__dict__)
         self.size = len(self.chainDict)
 
     def writeToFile(self):
         try:
-            data = json.dumps(self.chainDict, indent=4, sort_keys=False)
-            data =  base64.b64encode(zlib.compress(data.encode('ISO-8859-1'),9))
+            data = json.dumps(self.chainDict)
+            data = base64.b64encode(zlib.compress(data.encode('ISO-8859-1'),9))
             data = data.decode('ISO-8859-1')
 
-            file = open("blockchain.dat", 'a')
+            file = open("blockchain.dat", 'w')
             file.write(data)
             file.close()
             return True
@@ -199,8 +198,8 @@ class blockChain:
             file.close()
 
             return data
-        except:
-            print("file not found!!")
+        except Exception as e:
+            print("Error Retrieving data: " + str(e))
             return self.chainDict
 
     def decompressFile(self):
@@ -292,10 +291,15 @@ class transaction:
         self.sender = sender
         self.outputs = [[reciever, int(amount)]]
         self.txamount = int(amount)
-        self.txhash = stringHash(sender + reciever + str(self.timestamp))
+        self.txhash = stringHash(sender + str(json.dumps(self.outputs)) + str(self.timestamp))
         self.nonce = '{:x}'.format(nonce)
         self.sign()
-        
+
+    def addOutput(self,output):
+        self.outputs.append(output)
+        self.txamount += output[1]
+        self.txhash = stringHash(self.sender + str(json.dumps(self.outputs)) + str(self.timestamp))
+        self.sign()
         
     def sign(self):
         global privKey
@@ -398,8 +402,13 @@ def mine(block, miner, blockchain):
 
                 block.transactions.append(transaction(''.join([("0") for x in range(64)]), miner.publicHex, (100 * 10**9) / (2 **(math.floor(block.height/100000))), round(time.time(), 2), miner.retrievePrivate(password), miner.retrieveNonce()))
                 block.proof = calculated
-                block.addBlockToChain(blockchain, x, miner.publicHex)
+
+                if (blockchain.chainDict != []):
+                    block.addBlockToChain(blockchain, x, miner.publicHex)
+                else:
+                    block.transactions[0] = block.transactions[0].__dict__
                 return
         
         block.complete(block.timeStamp + 0.001)
         hash = rawHash(block.header)
+
