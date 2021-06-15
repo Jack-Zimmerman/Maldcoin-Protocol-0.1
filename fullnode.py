@@ -75,77 +75,68 @@ def writeKnownData():
 
 
 class nodeCommand:
-    def __init__(self, node):
-        self.node = node
+    def __init__(self,blockchain):
+        self.blockchain = blockchain.chainDict
+        self.blockchainSize = blockchain.size
+        pass
 
     def handleRequest(self, request):
         self.request = request
         try:
             if self.request.startswith("00000000000000000000000000000000GETCHAINDATA00000000000000000000000000000000"):
-                return self.getchaindata()
+                return self.getchaindata(self.blockchain)
             elif self.request.startswith("00000000000000000000000000000000TRANSACTION00000000000000000000000000000000"):
-                return self.recieveTransaction()
+                return self.recieveTransaction(self.blockchain)
             elif self.request.startswith("00000000000000000000000000000000BALANCE00000000000000000000000000000000"):
-                return self.returnBalance()
+                return self.returnBalance(self.blockchain)
             elif self.request.startswith("00000000000000000000000000000000BLOCK00000000000000000000000000000000"):
-                return self.addBlock()
+                return self.addBlock(self.blockchain)
             elif self.request.startswith(
                     "00000000000000000000000000000000LISTRANSACTIONS00000000000000000000000000000000"):
-                return self.listTransactions()
+                return self.listTransactions(self.blockchain)
             elif self.request.startswith(
                     "00000000000000000000000000000000GETBLOCKCOUNT00000000000000000000000000000000"):
-                return blockchain.size
+                return self.blockchainSize
             elif self.request.startswith("00000000000000000000000000000000DIFFICULTY00000000000000000000000000000000"):
-                return blockchain.chainDict[-1]["difficulty"]
+                return self.blockchain[-1]["difficulty"]
         except:
             return "INVALID_REQUEST"
 
-    def getchaindata(self):
-        global blockchain
-
+    def getchaindata(self, blockchain):
         request = json.loads(
             self.request.replace("00000000000000000000000000000000GETCHAINDATA00000000000000000000000000000000", ""))
 
         return blockchain.chainDict[request[0]: request[1]]
         # returns blockchain data from block of height index1 to block of height index2
 
-    def recieveTransaction(self):
-        global blockchain
+    def recieveTransaction(self,blockchain):
         grabbedTransaction = json.loads(
             self.request.replace("00000000000000000000000000000000TRANSACTION00000000000000000000000000000000", ""))
 
         if verifyTransaction(blockchain, grabbedTransaction):
             pendingTransactions.append(grabbedTransaction)
-            for i in range(len(self.node.server.connections)):
-                self.node.server.sendataspecfic("00000000000000000000000000000000TRANSACTION00000000000000000000000000000000" + str(grabbedTransaction), self.node.server.connections.values()[i][0])
             return "ACCEPTED" + grabbedTransaction["txhash"]
-
         else:
             return "DECLINED" + grabbedTransaction["txhash"]
 
-    def returnBalance(self):
-        global blockchain
+    def returnBalance(self,blockchain):
 
         account = self.request.replace("00000000000000000000000000000000BALANCE00000000000000000000000000000000", "")
 
         return generateBalance(blockchain, account)
 
-    def addBlock(self):
-        global blockchain
+    def addBlock(self,blockchain):
 
         grabbedBlock = json.loads(
             self.request.replace("00000000000000000000000000000000BLOCK00000000000000000000000000000000", ""))
 
-        if verifyBlock(grabbedBlock):
+        if verifyBlock(grabbedBlock, blockchain):
             # add block to chain and disperse
-            for i in range(len(self.node.server.connections)):
-                self.node.server.sendataspecfic(grabbedBlock,self.node.server.connections.values()[i][0])
             return "ACCEPTED" + grabbedBlock["header"]
         else:
             return "DECLINED" + grabbedBlock["header"]
 
-    def listTransactions(self):
-        global blockchain
+    def listTransactions(self,blockchain):
 
         account = self.request.replace(
             "00000000000000000000000000000000LISTRANSACTIONS00000000000000000000000000000000", "")
@@ -167,22 +158,20 @@ class nodeCommand:
 
 class FullNode():
 
-    def __init__(self, hostingIPAdress, programs=[]):
+    def __init__(self, hostingIPAdress, programs):
         self.hostingIPAdress = hostingIPAdress
         self.server = Server(hostingIPAdress, 1234, 5)
-        self.programs = programs
+        self.progams = programs
         self.consoleOutputInfo = ""
 
-        print(self.programs)
+        print(self.progams)
 
     def consoleOutput(self):
 
         # Defining the thread
         def consoleOutputThread():
             while True:
-                if self.consoleOutputInfo != "":
-                    print(str(self.consoleOutputInfo))
-
+                print(str(self.consoleOutputInfo))
 
         # Threading Console Output
         consoleOutputThread = threading.Thread(target=consoleOutputThread)
@@ -195,7 +184,7 @@ class FullNode():
             while True:
                 self.server.acceptconnections(False)
                 self.server.numCurrentConnections = len(self.server.connections)
-                self.consoleOutputInfo = self.server.connections.values()[-1][1]
+                self.consoleOutputInfo = self.server.connections["Connection" + str(self.server.numCurrentConnections)]
 
         # Threading the connection accecptor
         acceptingConnectionsThread = threading.Thread(target=acceptConnectionsThread)
@@ -208,35 +197,21 @@ class FullNode():
             while True:
                 connectionsList = list(self.server.connections.values())
                 for i in range(len(connectionsList)):
-                    try:
-                        self.server.recievemsg(connectionsList[i][0])
-                        request = nodeCommand(self)
-                        toReturn = request.handleRequest(self.server.finalmsgS)
-                        self.server.sendataspecfic(toReturn, connectionsList[i][0])
-                        self.consoleOutputInfo = str(toReturn) + str(connectionsList[i][1])
-                    except:
-                        pass
+                    self.server.recievemsg(connectionsList[i][0])
+                    request = nodeCommand()
+                    toReturn = request.handleRequest(self.server.finalmsgS)
+                    self.server.sendataspecfic(toReturn, connectionsList[i][0])
+                    self.consoleOutputInfo = str(toReturn) + str(connectionsList[i][1])
 
         # Threading Handle Requests
         handleRequestsThread = threading.Thread(target=handleRequestsThread)
         handleRequestsThread.start()
-        
-    
-
-
-
-
 
 
 # Server Start:
 
-fullNodeServer = FullNode("10.0.0.35")
-
-fullNodeServer.accecptConnections()
-fullNodeServer.handleRequests()
-fullNodeServer.consoleOutput()
-
-
+# fullNodeServer = Server(socket.gethostbyname(socket.gethostname()), 1234, 10)
+# print(grabPublicIp())
 """
 def requestHandler():
 	while True:
@@ -264,4 +239,3 @@ while True:
     #ip = grabPublicIp()
 """
 # end
-
