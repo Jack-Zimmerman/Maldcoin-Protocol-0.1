@@ -56,13 +56,14 @@ def arbDifficulty(hashDemand):
 
 #block/transaction verification:
 
-def verifyBlock(block):
+def verifyBlock(block, blockchain):
     try:
         block = block.__dict__
     except:
         pass
 
-    block_reward = (100 * 10**9) / (2 **(math.floor(block["height"]/100000)))
+    #reward starts at 100 coins, is cut in half every 100000 blocks
+    block_reward = (100 * (10**9)) / (2 **(math.floor(block["height"]/100000)))
 
     for transaction in block["transactions"]:
         if transaction["sender"] == "0000000000000000000000000000000000000000000000000000000000000000":
@@ -76,6 +77,13 @@ def verifyBlock(block):
 
     if (addHash(rawHash(block["header"]), int(block["nonce"], 16)) != block["proof"]):
         return False
+
+    if (blockchain.chainDict[-1]["proof"] != block["previousBlock"]):
+        return False
+
+    if (int(block["proof"],16) > int(arbDifficulty(block["difficulty"]),2)):
+        return False
+
 
     return True
 
