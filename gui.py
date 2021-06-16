@@ -102,21 +102,42 @@ account = ttk.Frame(tabControl)
 send = ttk.Frame(tabControl)
 contacts = ttk.Frame(tabControl)
 tabControl.add(account, text='Account')
-tabControl.add(send, text='Send')
 tabControl.add(contacts, text='Contacts')
 tabControl.grid(row=1, column=0, sticky=tk.NSEW)
 
-
+#shows balance
 balanceDescript = tk.Label(account,text="BALANCE:", width=20,height=2, font=("Bold", 25))
 balanceDescript.grid()
-balanceDescript.place(relx=0.2, rely=0.2, anchor='center')
+balanceDescript.place(relx=0.2, rely=0.3, anchor='center')
 balanceLabel = tk.Label(account,text="0.000000000", width=20,height=2, font=("Roboto", 20))
 balanceLabel.grid()
-balanceLabel.place(relx=0.65, rely=0.2, anchor='center')
+balanceLabel.place(relx=0.65, rely=0.3, anchor='center')
 
-accountLabel = tk.Label(account,text="", height=2, font=("Roboto", 12))
+#separates different pairs of elements
+separator1 = ttk.Separator(account,orient='horizontal')
+separator1.grid()
+separator1.place(relx=0, rely=0.2, relwidth=1, relheight=0.000001)
+
+separator2 = ttk.Separator(account,orient='horizontal')
+separator2.grid()
+separator2.place(relx=0, rely=0.4, relwidth=1, relheight=0.000001)
+
+accountLabel = tk.Label(account,text="", height=2, font=("Roboto", 7))
 accountLabel.grid()
-accountLabel.place(relx=0.43, rely=0.4, anchor='center')
+accountLabel.place(relx=0.25, rely=0.08, anchor='center')
+"""
+listbox = tk.Listbox(account)
+listbox.grid()
+listbox.place(relx=0.5, rely=0.6,anchor='center')
+
+scrollbar = tk.Scrollbar(account)
+scrollbar.grid()
+scrollbar.place(relx=0.5,rely=0.6,anchor='center')
+for values in range(100):
+    listbox.insert(100,values)
+listbox.config(yscrollcommand=scrollbar.set)
+scrollbar.config(command=listbox.yview)
+"""
 
 #Client information render END
 
@@ -148,9 +169,9 @@ def login(temp):
             balanceLabel.config(text=str(round(generateBalance(blockchain, wallet.public)/1000000000, 9)) + " SHT")
             accountLabel.config(text="Account: " + str(compressAddress(wallet.public)),background="white")
 
-            copyAddress = tk.Button(account, text="copy", command=lambda: pyperclip.copy(compressAddress(wallet.public)),width=10,height=2, font=("Roboto", 12))
+            copyAddress = tk.Button(account, text="copy", command=lambda: pyperclip.copy(compressAddress(wallet.public)),width=6,height=1, font=("Roboto", 8))
             copyAddress.grid()
-            copyAddress.place(relx=0.9, rely=0.4, anchor='center')
+            copyAddress.place(relx=0.53, rely=0.08, anchor='center')
 
             #Rendering rest of wallet START
             renderSend()
@@ -171,7 +192,7 @@ def login(temp):
             copyAddress.place(relx=0.9, rely=0.4, anchor='center')
 
 def renderSend():
-    global send
+    global account
     global wallet
     global password
     global blockchain
@@ -285,19 +306,16 @@ def renderSend():
                 tk.messagebox.showinfo("Transaction Valid", "Transaction has been submitted,\nwaiting for confirmation...")
             else:
                 tk.messagebox.showwarning("Transaction Invalid", "Transaction is invalid")
-                
+
 
         confirmTxButton = tk.Button(txWin, text="Confirm and Send", width=22, font=("Bold", 20), background="blue",foreground="white", command=lambda:txValidCheck(currentTx))
         confirmTxButton.grid()
         confirmTxButton.place(relx=0.5, rely=0.8, anchor='center')
 
-    sendMat = tk.Label(send, text="Send Shitcoins", font=("Bold", 25))
-    sendMat.grid()
-    sendMat.place(relx=0.3, rely=0.1,anchor='center')
 
-    newTransaction = tk.Button(send, text="New Transaction", width=15,font=("Bold", 15), command=newTransactionWindow)
+    newTransaction = tk.Button(account, text="Send Coins ", width=15,font=("Bold", 15), background="green", foreground="white",command=newTransactionWindow)
     newTransaction.grid()
-    newTransaction.place(relx=0.7, rely=0.1, anchor='center')
+    newTransaction.place(relx=0.8, rely=0.08, anchor='center')
 
 
     #mainloops
