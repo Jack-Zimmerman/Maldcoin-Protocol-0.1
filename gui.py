@@ -365,7 +365,7 @@ def renderContacts(new={}):
 
 
 
-        addContactFinal = tk.Button(contactEntry, width=54, text="Add Contact to List", command=lambda:insertToContacts({"address" : addrEntry.get(), "note" : noteEntry.get()}))
+        addContactFinal = tk.Button(contactEntry, width=30, background="blue", foreground="white", text="Add Contact to List", command=lambda:insertToContacts({"address" : addrEntry.get(), "note" : noteEntry.get()}))
         addContactFinal.place(relx = 0.5, rely=0.7, anchor='center')
 
     addContactButton = tk.Button(contacts, text="Add Contact", width=15, background="yellow", font=("Arial", 24), command=lambda:addContact())
