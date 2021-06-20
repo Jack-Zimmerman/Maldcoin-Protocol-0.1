@@ -167,13 +167,10 @@ class nodeCommand:
 
 class FullNode():
 
-    def __init__(self, hostingIPAdress, programs=[]):
+    def __init__(self, hostingIPAdress):
         self.hostingIPAdress = hostingIPAdress
         self.server = Server(hostingIPAdress, 1234, 5)
-        self.programs = programs
         self.consoleOutputInfo = ""
-
-        print(self.programs)
 
     def consoleOutput(self):
 
@@ -182,6 +179,7 @@ class FullNode():
             while True:
                 if self.consoleOutputInfo != "":
                     print(str(self.consoleOutputInfo))
+                    self.consoleOutputInfo = ""
 
 
         # Threading Console Output
@@ -193,12 +191,15 @@ class FullNode():
         # Defining the thread
         def acceptConnectionsThread():
             while True:
-                self.server.acceptconnections(False)
-                self.server.numCurrentConnections = len(self.server.connections)
-                self.consoleOutputInfo = self.server.connections.values()[-1][1]
 
-        # Threading the connection accecptor
+                self.server.acceptconnections(False, self.consoleOutputInfo)
+                self.server.numCurrentConnections = len(self.server.connections)
+                #addressesToPrint = list(self.server.connections.values())
+                #self.consoleOutputInfo = addressesToPrint[-1]
+
+        # Threading the connection acceptor
         acceptingConnectionsThread = threading.Thread(target=acceptConnectionsThread)
+        self.consoleOutputInfo = "\nAccepting Connections\n"
         acceptingConnectionsThread.start()
 
     def handleRequests(self):
@@ -219,12 +220,8 @@ class FullNode():
 
         # Threading Handle Requests
         handleRequestsThread = threading.Thread(target=handleRequestsThread)
+        self.consoleOutputInfo = "Proccesing Requests\n"
         handleRequestsThread.start()
-
-
-
-
-
 
 
 
@@ -232,9 +229,10 @@ class FullNode():
 
 fullNodeServer = FullNode("10.0.0.35")
 
+fullNodeServer.consoleOutput()
 fullNodeServer.accecptConnections()
 fullNodeServer.handleRequests()
-fullNodeServer.consoleOutput()
+
 
 
 """
@@ -263,5 +261,4 @@ while True:
         fullNodeServer.sendataspecfic()
     #ip = grabPublicIp()
 """
-# end
-
+#end
