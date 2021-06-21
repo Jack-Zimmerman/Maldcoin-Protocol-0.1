@@ -175,11 +175,21 @@ def login(temp):
             localAddress = wallet.retrievePublic()
 
             #update transaction list when logged in START
+            totalInserted = 0
             for x in blockchain.chainDict:
                 for y in x["transactions"]:
                     if y["sender"] == localAddress:
                         for output in y["outputs"]:
-                            txBox.insert(END,f"{output[1] / 1000000000} MDC to {compressAddress(output[0])}" + " | (" + datetime.utcfromtimestamp(y["timestamp"]).replace(tzinfo=timezone.utc).astimezone(tz=None).strftime('%Y-%m-%d %H:%M:%S') + ")")
+                            try:
+                                address = compressAddress(output[0])
+                            except:
+                                try:
+                                    address = compressAddress(output[0][2:])
+                                except:
+                                    address = "UNKNOWN"
+
+                            txBox.insert(END,f"{output[1] / 1000000000} MDC to {address}" + " | (" + datetime.utcfromtimestamp(y["timestamp"]).replace(tzinfo=timezone.utc).astimezone(tz=None).strftime('%Y-%m-%d %H:%M:%S') + ")")
+                            txBox.insert(END, [("-") for x in range(95)])
                     else:
                         for output in y["outputs"]:
                             if output[0] == localAddress:
@@ -188,6 +198,7 @@ def login(temp):
                                 else:
                                     sender = compressAddress(y["sender"])
                                 txBox.insert(END,f"{output[1] / 1000000000} MDC from {sender}" + " | (" + datetime.utcfromtimestamp(y["timestamp"]).replace(tzinfo=timezone.utc).astimezone(tz=None).strftime('%Y-%m-%d %H:%M:%S') + ")")
+                                txBox.insert(END, [("-") for x in range(95)])
 
                     main.update()
             #update transaction list when logged in END
@@ -395,7 +406,6 @@ def renderContacts(new={}):
         contactsFile = open("data/contacts.dat", "w")
         contactsFile.write("[]")
         contactsFile.close()
-
 
 
 
