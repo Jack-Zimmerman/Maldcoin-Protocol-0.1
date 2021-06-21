@@ -60,28 +60,45 @@ def verifyBlock(block, blockchain):
     try:
         block = block.__dict__
     except:
-        pass
+        try:
+            block = json.loads(block)
+        except:
+            pass
 
-    #reward starts at 100 coins, is cut in half every 100000 blocks
-    block_reward = (100 * (10**9)) / (2 **(math.floor(block["height"]/100000)))
 
-    for transaction in block["transactions"]:
-        if transaction["sender"] == "0000000000000000000000000000000000000000000000000000000000000000":
-            if transaction["txamount"] != block_reward:                
-                return False
-            elif ((transaction["outputs"][0][1]) + (transaction["outputs"][1][1])) != block_reward:
-                return False
+    try:
+        #reward starts at 100 coins, is cut in half every 100000 blocks
+        block_reward = math.floor((100 * (10**9)) / (2 **(math.floor(block["height"]/100000))))
 
-    if (block["header"] != stringHash(json.dumps(block["transactions"]) + str(block["previousBlock"]) + str(block["timeStamp"]))):
-        return False
 
-    if (addHash(rawHash(block["header"]), int(block["nonce"], 16)) != block["proof"]):
-        return False
+        for transaction in block["transactions"]:
+            if transaction["sender"] == "0000000000000000000000000000000000000000000000000000000000000000":
+                if transaction["txamount"] != block_reward:
+                    return False
+                elif (transaction["outputs"][0][1]) != block_reward:
+                    return False
 
-    if (blockchain.chainDict[-1]["proof"] != block["previousBlock"]):
-        return False
+                try:
+                    ecdsa.VerifyingKey.from_string(bytes.fromhex(block["miner"]), curve=ecdsa.SECP256k1,hashfunc=hashlib.sha256).verify(bytes.fromhex(transaction["signed"]),bytes(transaction["txhash"] + transaction["nonce"],"ISO-8859-1"))
+                except:
+                    return False
+            else:
+                if not verifyTransaction(blockchain, transaction):
+                    return False
 
-    if (int(block["proof"],16) > int(arbDifficulty(block["difficulty"]),2)):
+        if len(blockchain.chainDict) < block["height"]:
+            return False
+
+        if (addHash(rawHash(block["header"]), int(block["nonce"], 16)) != block["proof"]):
+            return False
+
+        if (blockchain.chainDict[block["height"] - 1]["proof"] != block["previousBlock"]):
+            return False
+
+        if (int(block["proof"],16) > int(arbDifficulty(block["difficulty"]),2)):
+            return False
+    except Exception as e:
+        print(e)
         return False
 
 
@@ -101,13 +118,15 @@ def verifyTransaction(blockchain, transaction):
     minerFee = len(str(json.dumps(transaction))) ** 2
 
     nonces = []
+    corrospondNonces = []
     account = transaction['sender']
     for y in blockchain.chainDict:
         for z in y["transactions"]:
             if (z["sender"] == account):
                 nonces.append(z['nonce'])
 
-    if transaction['nonce'] in nonces:
+    if nonces.count(transaction['nonce'])>1:
+
         return False
 
 
@@ -124,7 +143,7 @@ def verifyTransaction(blockchain, transaction):
         for x in transaction["outputs"]:
             total += x[1]
             
-        if total > userBal: 
+        if total > userBal:
             return False 
 
         if total < 1:
@@ -222,6 +241,8 @@ class blockChain:
     def syncChain(self):
         self.chainDict = self.retrieveFromFile()
         self.size = len(self.chainDict)
+
+
             
 
 
@@ -231,11 +252,10 @@ class block:
 
         if (self.height != 0):
             self.previousBlock = blockchain.chainDict[-1]["proof"] 
-            #self.difficulty = self.calculateDifficuty(blockchain)
-            self.difficulty = "{:016x}".format(1000)
+            self.difficulty = self.calculateDifficuty(blockchain)
         else:
             self.previousBlock = "0"
-            self.difficulty = "{:016x}".format(1000)
+            self.difficulty = "{:016x}".format(1000000)
 
         self.version = 0.1
         self.transactions = []
@@ -390,9 +410,8 @@ def mine(block, miner, blockchain):
     hash = rawHash(block.header)
     startTime = time.time()
 
+    diff = int(arbDifficulty(block.difficulty), 2)
     for a in range(2 ** 32):
-        diff = int(arbDifficulty(block.difficulty),2)
-
         for x in range(2 ** 32):
             if (int(addHash(hash, x), 16) < diff):
                 calculated = addHash(hash, x)
@@ -408,7 +427,7 @@ def mine(block, miner, blockchain):
                 except:
                     print("infinite luck")
 
-                block.transactions.append(transaction(''.join([("0") for x in range(64)]), miner.publicHex, (100 * 10**9) / (2 **(math.floor(block.height/100000))), round(time.time(), 2), miner.retrievePrivate(password), miner.retrieveNonce()))
+                block.transactions.append(transaction(''.join([("0") for x in range(64)]), miner.publicHex, math.floor((100 * 10**9) / (2 **(math.floor(block.height/100000))), round(time.time(), 2), miner.retrievePrivate(password), miner.retrieveNonce())))
                 block.proof = calculated
 
                 if (blockchain.chainDict != []):
@@ -419,4 +438,6 @@ def mine(block, miner, blockchain):
         
         block.complete(block.timeStamp + 0.001)
         hash = rawHash(block.header)
+
+
 
