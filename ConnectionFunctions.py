@@ -5,23 +5,6 @@ from requests import get
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-headersize = 10
-msglen = 0
-finalmsg = ""
-
-# For the client recieve recursion
-f = 0
-msgdone = False
-headercv = False
-
-# For the connection dictionary numaration
-h = 1
-
-# For the server recieve recursion
-j = 0
-msgdone1 = False
-headercv1 = False
-
 def grabPublicIp():
     ip = get('https://api.ipify.org').text
     return ip
@@ -32,7 +15,7 @@ def grabPrivateIp():
 
 # Adds the header to a message to be sent
 def fullmsg(message):
-    lenbytes = len(bytes(message, "ISO-8859-1"))
+    lenbytes = len(bytes(message, "utf-8"))
     spaces = ""
 
     for i in range(10 - len(str(lenbytes))):
@@ -99,26 +82,34 @@ class Server():
 
         self.hosting_ip = hosting_ip
         self.port = port
-        s.bind((hosting_ip, port))
-        s.listen(num_connections)
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.s.bind((hosting_ip, port))
+        self.s.listen(num_connections)
 
-        self.connections = {}
-        self.finalmsgS = ""
+        self.finalmsg = ""
+        self.headercv = False
+        self.msgdone = False
+        self.datarcv = 0
+
+
+        self.connections = []
         self.numTotalConnections = 0
         self.numCurrentConnections = 0
+        self.dataRecievedPerUser = []
 
-        print("Iniated Server at " + str(self.hosting_ip))
+        print("$Iniated Server at " + str(self.hosting_ip))
 
-    def acceptconnections(self, printOut = True):
+    def acceptconnections(self, printOut = True, output = ""):
 
-        while True:
-            clientsocket, address = s.accept()
-            self.connections["Connection" + str(self.numTotalConnections)] = [clientsocket, address]
-            if printOut == True:
-                print(self.connections["Connection" + str(self.numTotalConnections)][1])
-            self.numTotalConnections += 1
-            break
+        clientsocket, address = self.s.accept()
+        print("$New connection from: " + str(address[0]) + "\n")
+
+        self.numTotalConnections += 1
+        self.connections.append([clientsocket, address])
+        if printOut == True:
+            print(self.connections[-1][1])
+
+
 
     def sendataspecfic(self, data, clientsocket):
             clientsocket.send(bytes(fullmsg(data), "utf-8"))
@@ -132,33 +123,32 @@ class Server():
         global msgdone1
         global j
 
-        if headercv1 == False:
-            self.finalmsgS = ""
+        if self.headercv == False:
+            self.finalmsg = ""
             try:
-                j = int(clientsocket.recv(10).decode("utf-8"))
-                headercv1 = True
-                msgdone1 = False
+                self.datarcv = int(clientsocket.recv(10).decode("utf-8"))
+                self.headercv = True
+                self.msgdone = False
                 self.recievemsg(clientsocket)
             except:
                 return
-
-        elif msgdone1 == False:
+        elif self.msgdone == False:
             msg = clientsocket.recv(10)
-            self.finalmsgS += msg.decode("utf-8")
-            j -= len(msg)
-            if j == 0:
-                msgdone1 = True
+            self.finalmsg += msg.decode("utf-8")
+            self.datarcv -= len(msg)
+            if self.datarcv == 0:
+                self.msgdone = True
             self.recievemsg(clientsocket)
         else:
-            j = 0
-            headercv1 = False
+            self.datarcv = 0
+            self.headercv = False
 
     def closeConnection(self, clientSocket):
         clientSocket.close()
 
 
 
-#Full Node Class
+
 
 
 
