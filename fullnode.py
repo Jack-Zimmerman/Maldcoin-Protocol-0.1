@@ -25,6 +25,7 @@ from ConnectionFunctions import grabPublicIp
 # grabbing network protocol external classes:
 from ConnectionFunctions import ClientConnection
 from ConnectionFunctions import Server
+from ConnectionFunctions import grabPrivateIp
 
 # pip libraries
 import hashlib
@@ -184,6 +185,7 @@ class FullNode():
 
         # Threading Console Output
         consoleOutputThread = threading.Thread(target=consoleOutputThread)
+
         consoleOutputThread.start()
 
     def accecptConnections(self):
@@ -194,12 +196,10 @@ class FullNode():
 
                 self.server.acceptconnections(False, self.consoleOutputInfo)
                 self.server.numCurrentConnections = len(self.server.connections)
-                #addressesToPrint = list(self.server.connections.values())
-                #self.consoleOutputInfo = addressesToPrint[-1]
 
         # Threading the connection acceptor
         acceptingConnectionsThread = threading.Thread(target=acceptConnectionsThread)
-        self.consoleOutputInfo = "\nAccepting Connections\n"
+        self.consoleOutputInfo = "\n$Accepting Connections\n"
         acceptingConnectionsThread.start()
 
     def handleRequests(self):
@@ -207,20 +207,20 @@ class FullNode():
         # Defining the thread
         def handleRequestsThread():
             while True:
-                connectionsList = list(self.server.connections.values())
-                for i in range(len(connectionsList)):
-                    try:
-                        self.server.recievemsg(connectionsList[i][0])
-                        request = nodeCommand(self)
+                try:
+                    for i in range(len(self.server.connections)):
+                        self.server.recievemsg(self.server.connections[i][0])
+                        request = nodeCommand(self.server)
                         toReturn = request.handleRequest(self.server.finalmsgS)
-                        self.server.sendataspecfic(toReturn, connectionsList[i][0])
-                        self.consoleOutputInfo = str(toReturn) + str(connectionsList[i][1])
-                    except:
-                        pass
+                        self.server.sendataspecfic(str(toReturn), self.server.connections[i][0])
+                        self.consoleOutputInfo = "$Returned: " + str(toReturn) + " to " + str(self.server.connections[i][1]) + "\n"
+                except:
+                    pass
+
 
         # Threading Handle Requests
         handleRequestsThread = threading.Thread(target=handleRequestsThread)
-        self.consoleOutputInfo = "Proccesing Requests\n"
+        self.consoleOutputInfo = "$Proccesing Requests\n"
         handleRequestsThread.start()
 
 
