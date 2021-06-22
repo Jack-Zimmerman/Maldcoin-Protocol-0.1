@@ -38,7 +38,14 @@ def rawHash(string):
     return hashlib.sha256(str(string).encode()).digest()
 
 def addHash(string1, string2):
-    return stringHash(rawHash(string1) + rawHash(string2))    
+    return stringHash(rawHash(string1) + rawHash(string2))
+
+def MALDSHA256(blockData, nonce):
+    return stringHash(rawHash(blockData.encode('ISO-8859-1').hex() + hex(nonce)))
+
+def MALDSHA256VAL(blockData, nonce) -> int:
+    return int(stringHash(rawHash(blockData.encode('ISO-8859-1').hex() + hex(nonce))),16)
+
 
 #generates difficulty target based off of hex target
 def arbDifficulty(hashDemand):
@@ -86,10 +93,12 @@ def verifyBlock(block, blockchain):
                 if not verifyTransaction(blockchain, transaction):
                     return False
 
+        #check to see if height is invalidly high
         if len(blockchain.chainDict) < block["height"]:
             return False
 
-        if (addHash(rawHash(block["header"]), int(block["nonce"], 16)) != block["proof"]):
+        #check to see if proof is valid
+        if (MALDSHA256(stringHash(json.dumps(block["transactions"]) + block["previousBlock"] + str(block["timeStamp"])), int(block["nonce"],16)) != block["proof"]):
             return False
 
         if (blockchain.chainDict[block["height"] - 1]["proof"] != block["previousBlock"]):
@@ -97,8 +106,7 @@ def verifyBlock(block, blockchain):
 
         if (int(block["proof"],16) > int(arbDifficulty(block["difficulty"]),2)):
             return False
-    except Exception as e:
-        print(e)
+    except:
         return False
 
 
@@ -118,15 +126,13 @@ def verifyTransaction(blockchain, transaction):
     minerFee = len(str(json.dumps(transaction))) ** 2
 
     nonces = []
-    corrospondNonces = []
     account = transaction['sender']
     for y in blockchain.chainDict:
         for z in y["transactions"]:
             if (z["sender"] == account):
                 nonces.append(z['nonce'])
 
-    if nonces.count(transaction['nonce'])>1:
-
+    if nonces.count(transaction['nonce']) > 0:
         return False
 
 
@@ -135,7 +141,8 @@ def verifyTransaction(blockchain, transaction):
         ecdsa.VerifyingKey.from_string(bytes.fromhex(transaction["sender"]),curve=ecdsa.SECP256k1, hashfunc=hashlib.sha256).verify(bytes.fromhex(transaction["signed"]),bytes(transaction["txhash"] + transaction["nonce"], "ISO-8859-1"))
     except:
         return False
-        
+
+    #check to see if amount spent is too much
     if transaction["txamount"] > userBal:
         return False
     else:
@@ -195,10 +202,13 @@ class blockChain:
 
     def createGenesis(self, miner):
         self.chainDict = []
+
         genesis = block(self)
-        genesis.difficulty = "{:016x}".format(1)
+        genesis.difficulty = "{:016x}".format(100000)
         genesis.complete(time.time())
         mine(genesis, miner, self)
+        genesis.mrkl = str(MerkleTree(genesis.transactions, stringHash))[12:-2]
+        genesis.tx_num = 1
         self.chainDict.append(genesis.__dict__)
 
     def addBlock(self, block):
@@ -277,8 +287,6 @@ class block:
 
     def complete(self, timestamp): 
         self.timeStamp = round(timestamp, 2)
-        self.header = stringHash(json.dumps(self.transactions) + str(self.previousBlock) + str(self.timeStamp))
-
 
     def addBlockToChain(self, blockchain, nonce, miner):
         #adding fees to all transactions in block
@@ -306,7 +314,7 @@ class block:
         self.tx_num = len(self.transactions)
 
         #murkleTree = MerkleTree(self.transactions, stringHash)
-        self.murkleString = (str(MerkleTree(self.transactions, stringHash))[12:-2])
+        self.mrkl = str(MerkleTree(self.transactions, stringHash))[12:-2]
         blockchain.addBlock(self)
 
 class transaction:
@@ -406,15 +414,16 @@ class wallet:
     
 #cpu mining
 def mine(block, miner, blockchain):
-    global password 
-    hash = rawHash(block.header)
+    global password
     startTime = time.time()
 
     diff = int(arbDifficulty(block.difficulty), 2)
+    block.transactions.append(transaction(''.join([("0") for x in range(64)]), miner.publicHex,math.floor((100 * 10 ** 9) / (2 ** (math.floor(block.height / 100000)))),round(time.time(), 2), miner.retrievePrivate(password),miner.retrieveNonce()).__dict__)
     for a in range(2 ** 32):
-        for x in range(2 ** 32):
-            if (int(addHash(hash, x), 16) < diff):
-                calculated = addHash(hash, x)
+        header = stringHash(json.dumps(block.transactions) + str(block.previousBlock) + str(block.timeStamp))
+        for x in range(2**32):
+            if (MALDSHA256VAL(header, x) < diff):
+                calculated = MALDSHA256(header,x)
                 print("Found nonce: " + str(x + (a*(2**32))) + "; Alterations: " + str(a))
                 print("Hash: " + calculated)
                 
@@ -427,7 +436,6 @@ def mine(block, miner, blockchain):
                 except:
                     print("infinite luck")
 
-                block.transactions.append(transaction(''.join([("0") for x in range(64)]), miner.publicHex, math.floor((100 * 10**9) / (2 **(math.floor(block.height/100000))), round(time.time(), 2), miner.retrievePrivate(password), miner.retrieveNonce())))
                 block.proof = calculated
 
                 if (blockchain.chainDict != []):
@@ -437,7 +445,4 @@ def mine(block, miner, blockchain):
                 return
         
         block.complete(block.timeStamp + 0.001)
-        hash = rawHash(block.header)
-
-
 
