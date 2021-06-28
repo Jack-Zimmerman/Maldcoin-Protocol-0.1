@@ -173,21 +173,6 @@ class FullNode():
         self.server = Server(hostingIPAdress, 1234, 5)
         self.consoleOutputInfo = ""
 
-    def consoleOutput(self):
-
-        # Defining the thread
-        def consoleOutputThread():
-            while True:
-                if self.consoleOutputInfo != "":
-                    print(str(self.consoleOutputInfo))
-                    self.consoleOutputInfo = ""
-
-
-        # Threading Console Output
-        consoleOutputThread = threading.Thread(target=consoleOutputThread)
-
-        consoleOutputThread.start()
-
     def accecptConnections(self):
 
         # Defining the thread
@@ -199,7 +184,7 @@ class FullNode():
 
         # Threading the connection acceptor
         acceptingConnectionsThread = threading.Thread(target=acceptConnectionsThread)
-        self.consoleOutputInfo = "\n$Accepting Connections\n"
+        print("\n$Accepting Connections\n")
         acceptingConnectionsThread.start()
 
     def handleRequests(self):
@@ -211,16 +196,16 @@ class FullNode():
                     for i in range(len(self.server.connections)):
                         self.server.recievemsg(self.server.connections[i][0])
                         request = nodeCommand(self.server)
-                        toReturn = request.handleRequest(self.server.finalmsgS)
+                        toReturn = request.handleRequest(self.server.finalmsg)
                         self.server.sendataspecfic(str(toReturn), self.server.connections[i][0])
-                        self.consoleOutputInfo = "$Returned: " + str(toReturn) + " to " + str(self.server.connections[i][1]) + "\n"
+                        print("$Returned: " + str(toReturn) + " to " + str(self.server.connections[i][1]) + "\n")
                 except:
                     pass
 
 
         # Threading Handle Requests
         handleRequestsThread = threading.Thread(target=handleRequestsThread)
-        self.consoleOutputInfo = "$Proccesing Requests\n"
+        print("$Proccesing Requests\n")
         handleRequestsThread.start()
 
 
@@ -229,7 +214,6 @@ class FullNode():
 
 fullNodeServer = FullNode("10.0.0.35")
 
-fullNodeServer.consoleOutput()
 fullNodeServer.accecptConnections()
 fullNodeServer.handleRequests()
 
