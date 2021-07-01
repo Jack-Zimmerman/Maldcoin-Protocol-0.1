@@ -98,6 +98,8 @@ class nodeCommand:
                 return blockchain.size
             elif self.request.startswith("00000000000000000000000000000000DIFFICULTY00000000000000000000000000000000"):
                 return blockchain.chainDict[-1]["difficulty"]
+            elif self.request.startswith("00000000000000000000000000000000CONNECTBACK00000000000000000000000000000000"):
+                return self.connectBack()
         except:
             return "INVALID_REQUEST"
 
@@ -165,13 +167,15 @@ class nodeCommand:
 
         return tiedTransactions
 
+    def connectBack(self):
+        self.node.server.connect((str(self.request[75:]) , 26528))
 
 class FullNode():
 
     def __init__(self, hostingIPAdress):
         self.hostingIPAdress = hostingIPAdress
-        self.server = Server(hostingIPAdress, 1234, 5)
-        self.consoleOutputInfo = ""
+        self.server = Server(hostingIPAdress, 26528, 5)
+        self.knownNodes = ["73.70.78.199"]
 
     def accecptConnections(self):
 
@@ -179,8 +183,9 @@ class FullNode():
         def acceptConnectionsThread():
             while True:
 
-                self.server.acceptconnections(False, self.consoleOutputInfo)
+                self.server.acceptconnections()
                 self.server.numCurrentConnections = len(self.server.connections)
+                self.server.sendataspecfic("0000000000000000000000000000000" + str(self.knownNodes) + "0000000000000000000000000000000", self.server.connections[self.server.numCurrentConnections - 1])
 
         # Threading the connection acceptor
         acceptingConnectionsThread = threading.Thread(target=acceptConnectionsThread)
@@ -208,41 +213,29 @@ class FullNode():
         print("$Proccesing Requests\n")
         handleRequestsThread.start()
 
+    def startUp(self):
+
+        for i in range(len(self.knownNodes)):
+            try:
+                newClientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                newClientSocket.connect((str(self.knownNodes[i]),26528))
+                self.server.clientConnections.append([newClientSocket, self.knownNodes[i]])
+                print("$Connected to: " + str(self.server) + "\n")
+
+            except Exception as e:
+                print("$ERROR: CONNECTION TO " + str(self.knownNodes[i]) + " FAILED: " + str(e))
+
+
+        self.accecptConnections()
+        self.handleRequests()
 
 
 # Server Start:
 
 fullNodeServer = FullNode("10.0.0.35")
 
-fullNodeServer.accecptConnections()
-fullNodeServer.handleRequests()
+fullNodeServer.startUp()
 
 
 
-"""
-def requestHandler():
-	while True:
-		for i in range(len(fullNodeServer.connections)):
-			fullNodeServer.recievemsg(fullNodeServer.connections["Connection" + str((i + 1))][0])
-			request = handleRequest(fullNodeServer.finalmsgS)
-			toReturn = request.handleRequest()
-			fullNodeServer.sendataspecfic(toReturn,fullNodeServer.connections["Connection" + str((i + 1))][0])
-acceptConnectionsThread = threading.thread(target=fullNodeServer.acceptconnections)
-requestHandlerThread = threading.thread(target=requestHandler)
-acceptConnectionsThread.start()
-requestHandlerThread.start()
-"""
-"""
-fullNodeServer.acceptconnections()
-time.sleep(1)
-#Connection Tester
-while True:
-    fullNodeServer.recievemsg(fullNodeServer.connections[1][0])
-    try:
-        fullNodeServer.s.connect((grabPublicIp(), 1234))
-        fullNodeServer.sendataspecfic(1, fullNodeServer.connections[1][0])
-    except:
-        fullNodeServer.sendataspecfic()
-    #ip = grabPublicIp()
-"""
 #end
