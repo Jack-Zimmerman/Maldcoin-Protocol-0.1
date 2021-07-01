@@ -93,11 +93,12 @@ class Server():
 
 
         self.connections = []
+        self.clientConnections = []
         self.numTotalConnections = 0
         self.numCurrentConnections = 0
         self.dataRecievedPerUser = []
 
-        print("$Iniated Server at " + str(self.hosting_ip))
+        print("$Iniated Server at " + str(self.hosting_ip) + "\n")
 
     def acceptconnections(self, printOut = True, output = ""):
 
@@ -148,26 +149,5 @@ class Server():
 
 
 
-
-
-
-
-
-
-	
-
-
-#print("lol")
-#clientTest = ClientConnection("67.161.43.140", 1234)
-
-
-#clientTest.sendmsg("00000000000000000000000000000000BALANCE00000000000000000000000000000000024b65688de063e9144bb349622e4f914cb01c760dec160e83c22ab979fefe30dc")
-
-#clientTest.recievemsg()
-
-#print(clientTest.finalmsg)
-"""
-connection = ClientConnection("67.161.43.140",1234)
-"""
 
 #end
