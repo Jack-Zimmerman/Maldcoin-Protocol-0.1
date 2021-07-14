@@ -14,6 +14,7 @@ from blockchainFunctions import compressAddress
 from blockchainFunctions import decompressAddress
 from blockchainFunctions import verifyTransaction
 from blockchainFunctions import transaction
+from blockchainFunctions import calculateFee
 
 from PIL import Image, ImageTk
 import tkinter as tk
@@ -60,6 +61,7 @@ main.resizable(False, False)
 mainMenu = tk.Menu(main)
 filemenu = tk.Menu(mainMenu, tearoff=0)
 filemenu.add_command(label="Run Node")
+filemenu.add_command(label="Command Interpreter", command=lambda: os.system("start python nodeProgs/runcommands.py"))
 filemenu.add_separator()
 filemenu.add_command(label="Exit", command=lambda:quit())
 mainMenu.add_cascade(label="File", menu=filemenu)
@@ -162,50 +164,62 @@ def login(temp):
                 else:
                     wallet.private = cryptocode.decrypt(walletDict["privateHex"], password)
                     enterPassword.destroy()
+
+                    wallet.public = walletDict["publicHex"]
+                    balanceLabel.config(
+                        text=str(round(generateBalance(blockchain, wallet.public) / 1000000000, 9)) + " MDC")
+                    accountLabel.config(text="Account: " + str(compressAddress(wallet.public)), background="white")
+
+                    copyAddress = tk.Button(account, text="copy",
+                                            command=lambda: pyperclip.copy(compressAddress(wallet.public)), width=6,
+                                            height=1, font=("Roboto", 8))
+                    copyAddress.place(relx=0.53, rely=0.08, anchor='center')
+
+                    localAddress = wallet.retrievePublic()
+
+                    # update transaction list when logged in START
+                    totalInserted = 0
+                    for x in blockchain.chainDict:
+                        for y in x["transactions"]:
+                            if y["sender"] == localAddress:
+                                for output in y["outputs"]:
+                                    try:
+                                        address = compressAddress(output[0])
+                                    except:
+                                        try:
+                                            address = compressAddress(output[0][2:])
+                                        except:
+                                            address = "UNKNOWN"
+
+                                    txBox.insert(END,
+                                                 f"{output[1] / 1000000000} MDC to {address}" + " | (" + datetime.utcfromtimestamp(
+                                                     y["timestamp"]).replace(tzinfo=timezone.utc).astimezone(
+                                                     tz=None).strftime('%Y-%m-%d %H:%M:%S') + ")")
+                                    txBox.insert(END, [("-") for x in range(95)])
+                            else:
+                                for output in y["outputs"]:
+                                    if output[0] == localAddress:
+                                        if y[
+                                            "sender"] == "0000000000000000000000000000000000000000000000000000000000000000":
+                                            sender = "Mining Block Reward"
+                                        else:
+                                            sender = compressAddress(y["sender"])
+                                        txBox.insert(END,
+                                                     f"{output[1] / 1000000000} MDC from {sender}" + " | (" + datetime.utcfromtimestamp(
+                                                         y["timestamp"]).replace(tzinfo=timezone.utc).astimezone(
+                                                         tz=None).strftime('%Y-%m-%d %H:%M:%S') + ")")
+                                        txBox.insert(END, [("-") for x in range(95)])
+
+                            main.update()
+                    # update transaction list when logged in END
+
+                    # Rendering rest of wallet
+                    renderSend()
+                    renderContacts()
             except:
                 pass
 
-            wallet.public = walletDict["publicHex"]
-            balanceLabel.config(text=str(round(generateBalance(blockchain, wallet.public)/1000000000, 9)) + " MDC")
-            accountLabel.config(text="Account: " + str(compressAddress(wallet.public)),background="white")
 
-            copyAddress = tk.Button(account, text="copy", command=lambda: pyperclip.copy(compressAddress(wallet.public)),width=6,height=1, font=("Roboto", 8))
-            copyAddress.place(relx=0.53, rely=0.08, anchor='center')
-
-            localAddress = wallet.retrievePublic()
-
-            #update transaction list when logged in START
-            totalInserted = 0
-            for x in blockchain.chainDict:
-                for y in x["transactions"]:
-                    if y["sender"] == localAddress:
-                        for output in y["outputs"]:
-                            try:
-                                address = compressAddress(output[0])
-                            except:
-                                try:
-                                    address = compressAddress(output[0][2:])
-                                except:
-                                    address = "UNKNOWN"
-
-                            txBox.insert(END,f"{output[1] / 1000000000} MDC to {address}" + " | (" + datetime.utcfromtimestamp(y["timestamp"]).replace(tzinfo=timezone.utc).astimezone(tz=None).strftime('%Y-%m-%d %H:%M:%S') + ")")
-                            txBox.insert(END, [("-") for x in range(95)])
-                    else:
-                        for output in y["outputs"]:
-                            if output[0] == localAddress:
-                                if y["sender"] == "0000000000000000000000000000000000000000000000000000000000000000":
-                                    sender = "Mining Block Reward"
-                                else:
-                                    sender = compressAddress(y["sender"])
-                                txBox.insert(END,f"{output[1] / 1000000000} MDC from {sender}" + " | (" + datetime.utcfromtimestamp(y["timestamp"]).replace(tzinfo=timezone.utc).astimezone(tz=None).strftime('%Y-%m-%d %H:%M:%S') + ")")
-                                txBox.insert(END, [("-") for x in range(95)])
-
-                    main.update()
-            #update transaction list when logged in END
-
-            #Rendering rest of wallet
-            renderSend()
-            renderContacts()
     else:
         wallet.generateKeys(password)
         enterPassword.destroy()
@@ -299,8 +313,8 @@ def renderSend():
                     if not x in currentTx.outputs:
                         currentTx.addOutput(x)
 
-                txAmountLabel.config(text="Total(+Fee): " + str(round((len(json.dumps(currentTx.__dict__)) ** 2 + currentTx.txamount)/1000000000,9)))
-                txFeeLabel.config(text="Estimated Fee: " + str(round((len(json.dumps(currentTx.__dict__)) ** 2)/1000000000,9)))
+                txAmountLabel.config(text="Total(+Fee): " + str((calculateFee(currentTx) + currentTx.txamount)/1000000000))
+                txFeeLabel.config(text="Estimated Fee: " + str(calculateFee(currentTx)/1000000000))
 
 
 
