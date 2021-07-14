@@ -32,20 +32,21 @@ def decompressAddress(public):
 ##############################################################################
 #Hash functions for varying usage
 
-def stringHash(string) -> str:
+def stringHash(string):
     return sha256(str(string).encode('ISO-8859-1')).digest().hex()
 
-def rawHash(string) -> bytes:
-    return sha256(str(string).encode()).digest()
+def rawHash(string):
+    return sha256(str(string).encode('ISO-8859-1')).digest()
 
-def addHash(string1, string2) -> str:
+def addHash(string1, string2):
     return stringHash(rawHash(string1) + rawHash(string2))
 
-def SHAKE6(blockData, nonce) -> str:
-    return sha256(blake3((blockData.encode('ISO-8859-1').hex() + hex(nonce)).encode()).digest()).hexdigest()
+def SHAKE6(blockData, nonce):
+    return sha256(blake3((hex(blockData + nonce)).encode()).digest()).hexdigest()
 
-def SHAKE6VAL(blockData, nonce) -> int:
-    return int.from_bytes(sha256(blake3((blockData.encode('ISO-8859-1').hex() + hex(nonce)).encode()).digest()).digest(),"big")
+def SHAKE6VAL(blockData, nonce):
+    return int.from_bytes(sha256(blake3((hex(blockData + nonce)).encode()).digest()).digest(),"big")
+
 
 
 #generates difficulty target based off of hex target
@@ -55,6 +56,14 @@ def arbDifficulty(hashDemand):
     
     return bin(round((int(highest, 2))/hashDemand))
 
+def calculateFee(transaction):
+    try:
+        transaction = transaction.__dict__
+    except:
+        pass
+
+
+    return len(json.dumps(transaction).encode("ISO-8859-1").hex()) * 500
 
 
 #block/transaction verification:
@@ -89,6 +98,13 @@ def verifyBlock(block, blockchain):
                 if not verifyTransaction(blockchain, transaction):
                     return False
 
+
+        if blockchain.size > 10:
+            refTime = blockchain.chainDict[block["height"] - 5]["timeStamp"]
+
+            if (refTime + 5000) < block["timeStamp"] or (refTime - 5000) > block["timeStamp"]:
+                return False
+
         #check to see if height is invalidly high
         if len(blockchain.chainDict) < block["height"]:
             return False
@@ -119,7 +135,7 @@ def verifyTransaction(blockchain, transaction):
 
     #generating information on sender:
     userBal = generateBalance(blockchain, transaction["sender"])
-    minerFee = (len(json.dumps(transaction).encode("ISO-8859-1").hex()) ** 2)/4
+    minerFee = calculateFee(transaction)
 
     nonces = []
     account = transaction['sender']
@@ -251,8 +267,6 @@ class blockChain:
         self.size = len(self.chainDict)
 
 
-            
-
 
 class block:
     def __init__(self, blockchain):
@@ -288,7 +302,6 @@ class block:
 
     def addBlockToChain(self, blockchain, nonce, miner):
         #adding fees to all transactions in block
-        size = 0
 
         for y, x in enumerate(self.transactions):
             try:
@@ -299,9 +312,7 @@ class block:
 
         for y,x in enumerate(self.transactions):
             if (x["sender"] != "0000000000000000000000000000000000000000000000000000000000000000"):
-                size = len(str(json.dumps(self.transactions[y])))
-            
-                fee = size ** 2
+                fee = calculateFee(self.transactions[y])
 
                 self.transactions[y]["outputs"][0] = [self.transactions[y]["outputs"][0][0], int(self.transactions[y]["txamount"] - fee)]
                 self.transactions[y]["outputs"].append([miner, int(fee)])
@@ -328,6 +339,10 @@ class transaction:
         self.txhash = stringHash(sender + str(json.dumps(self.outputs)) + str(self.timestamp))
         self.nonce = '{:x}'.format(nonce)
         self.sign()
+
+    def addMessage(self, message):
+        self.msg = bytes(str(message), "ISO-8859-1").hex()
+
 
     def addOutput(self,output):
         self.outputs.append(output)
@@ -420,7 +435,7 @@ def mine(block, miner, blockchain):
     #add coinbase transaction
     block.transactions.append(transaction(''.join([("0") for x in range(64)]), miner.publicHex,math.floor((100 * 10 ** 9) / (2 ** (math.floor(block.height / 100000)))),round(time.time(), 2), miner.retrievePrivate(password),miner.retrieveNonce()).__dict__)
     for a in range(2 ** 32):
-        header = stringHash(json.dumps(block.transactions) + str(block.previousBlock) + str(block.timeStamp))
+        header = int(stringHash(json.dumps(block.transactions) + str(block.previousBlock) + str(block.timeStamp)),16)
         for x in range(2**32):
             if (SHAKE6VAL(header, x) < diff):
                 calculated = SHAKE6(header,x)
@@ -437,10 +452,8 @@ def mine(block, miner, blockchain):
                     print("infinite luck")
 
                 block.proof = calculated
-
-
                 block.addBlockToChain(blockchain, x, miner.publicHex)
 
                 return
         
-        block.complete(block.timeStamp + 0.001)
+        block.complete(block.timeStamp + 0.01)
