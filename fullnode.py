@@ -232,7 +232,7 @@ class FullNode():
 
 # Server Start:
 
-fullNodeServer = FullNode("10.0.0.35")
+fullNodeServer = FullNode(socket.gethostbyname(socket.gethostname()))
 
 fullNodeServer.startUp()
 
