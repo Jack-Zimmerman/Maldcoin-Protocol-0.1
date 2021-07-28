@@ -173,6 +173,7 @@ class nodeCommand:
     def connectBack(self):
         newClientSocket = ClientConnection(self.request[75:], 26527)
         self.node.server.clientConnections.append([newClientSocket, self.request[75:]])
+        return
 
 
 
@@ -181,7 +182,7 @@ class FullNode():
     def __init__(self, hostingIPAdress):
         self.hostingIPAdress = hostingIPAdress
         self.server = Server(hostingIPAdress, 26527, 5)
-        self.knownNodes = ["73.0.0", "10.0.0.41"]
+        self.knownNodes = ["10.0.0.190"]
 
     def accecptConnections(self):
 
@@ -207,7 +208,8 @@ class FullNode():
                 try:
                     for i in range(len(self.server.connections)):
                         self.server.recievemsg(self.server.connections[i][0])
-                        print("$Recieved mesasge: " + str(self.server.finalmsg))
+                        if self.server.finalmsg != "":
+                            print("$Recieved mesasge: " + str(self.server.finalmsg))
                         request = nodeCommand(self)
                         toReturn = request.handleRequest(self.server.finalmsg)
                         self.server.sendataspecfic(str(toReturn), self.server.connections[i][0])
@@ -243,9 +245,15 @@ class FullNode():
         for j in range(len(self.server.clientConnections)):
             try:
                 self.server.clientConnections[j][0].sendmsg(
-                    "0000000000000000000000000000000CONNECTBACK0000000000000000000000000000000" + str(
+                    "00000000000000000000000000000000CONNECTBACK00000000000000000000000000000000" + str(
                         self.hostingIPAdress))
                 print("$Connect back asked of: " + str(self.server.clientConnections[j][1]))
+                try:
+                    self.server.recievemsg(self.server.connections[j][0])
+                    if self.server.finalmsg == "CONFIRMED":
+                        print("$CONFIRMED\n")
+                except Exception as e:
+                    print("$ERROR: CONNECT BACK FAILED: " + str(e) + "\n")
             except Exception as e:
                 print("$ERROR: DATA SEND TO: " + str(self.server.clientConnections[j][0]) + " FAILED: " + str(e) + "\n")
 
@@ -256,10 +264,10 @@ class FullNode():
 
 # Server Start:
 
-#For final version ip address needs to be fixed
 fullNodeServer = FullNode("10.0.0.38")
 
-
 fullNodeServer.startUp()
+
+
 
 # end
