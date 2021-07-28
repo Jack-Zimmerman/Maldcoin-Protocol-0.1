@@ -101,8 +101,8 @@ class nodeCommand:
                 return blockchain.chainDict[-1]["difficulty"]
             elif self.request.startswith("00000000000000000000000000000000CONNECTBACK00000000000000000000000000000000"):
                 return self.connectBack()
-        except:
-            return "INVALID_REQUEST"
+        except Exception as e:
+            return "INVALID_REQUEST" + str(e)
 
     def getchaindata(self):
         global blockchain
@@ -171,7 +171,9 @@ class nodeCommand:
         return tiedTransactions
 
     def connectBack(self):
-        self.node.server.connect((str(self.request[75:]), 26528))
+        newClientSocket = ClientConnection(self.request[75:], 26527)
+        self.node.server.clientConnections.append([newClientSocket, self.request[75:]])
+
 
 
 class FullNode():
@@ -179,7 +181,7 @@ class FullNode():
     def __init__(self, hostingIPAdress):
         self.hostingIPAdress = hostingIPAdress
         self.server = Server(hostingIPAdress, 26527, 5)
-        self.knownNodes = ["10.0.0.38"]
+        self.knownNodes = ["73.0.0", "10.0.0.41"]
 
     def accecptConnections(self):
 
@@ -190,7 +192,7 @@ class FullNode():
                 self.server.numCurrentConnections = len(self.server.connections)
                 self.server.sendataspecfic(
                     "0000000000000000000000000000000" + str(self.knownNodes) + "0000000000000000000000000000000",
-                    self.server.connections[self.server.numCurrentConnections - 1])
+                    self.server.connections[self.server.numCurrentConnections - 1][0])
 
         # Threading the connection acceptor
         acceptingConnectionsThread = threading.Thread(target=acceptConnectionsThread)
@@ -205,7 +207,8 @@ class FullNode():
                 try:
                     for i in range(len(self.server.connections)):
                         self.server.recievemsg(self.server.connections[i][0])
-                        request = nodeCommand(self.server)
+                        print("$Recieved mesasge: " + str(self.server.finalmsg))
+                        request = nodeCommand(self)
                         toReturn = request.handleRequest(self.server.finalmsg)
                         self.server.sendataspecfic(str(toReturn), self.server.connections[i][0])
                         print("$Returned: " + str(toReturn) + " to " + str(self.server.connections[i][1]) + "\n")
@@ -250,9 +253,12 @@ class FullNode():
         self.handleRequests()
 
 
+
 # Server Start:
 
-fullNodeServer = FullNode(socket.gethostbyname(socket.gethostname()))
+#For final version ip address needs to be fixed
+fullNodeServer = FullNode("10.0.0.38")
+
 
 fullNodeServer.startUp()
 
