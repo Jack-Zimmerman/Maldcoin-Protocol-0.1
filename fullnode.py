@@ -45,6 +45,7 @@ blockchain = blockChain()
 blockchain.syncChain()
 
 pendingTransactions = []
+knownNodesFile = open("peerlist.dat", "r")
 
 
 def writeKnownData():
@@ -101,6 +102,8 @@ class nodeCommand:
                 return blockchain.chainDict[-1]["difficulty"]
             elif self.request.startswith("00000000000000000000000000000000CONNECTBACK00000000000000000000000000000000"):
                 return self.connectBack()
+            elif self.request.startswith("00000000000000000000000000000000REGISTERNODE00000000000000000000000000000000"):
+                return self.registerToPeerList()
         except Exception as e:
             return "INVALID_REQUEST" + str(e)
 
@@ -176,6 +179,13 @@ class nodeCommand:
         return
 
 
+    def registerToPeerList(self, newIP):
+        with open("data/peerlist.dat", "r") as fileRead, open("data/peerlist.dat", "w") as fileWrite:
+            currentList = json.loads(fileRead.read())
+            currentList.append(newIP)
+            fileWrite.write(json.dumps(currentList))
+            return
+
 
 class FullNode():
 
@@ -189,10 +199,11 @@ class FullNode():
         # Defining the thread
         def acceptConnectionsThread():
             while True:
+                knownNodes = list(knownNodesFile.read())
                 self.server.acceptconnections()
                 self.server.numCurrentConnections = len(self.server.connections)
                 self.server.sendataspecfic(
-                    "0000000000000000000000000000000" + str(self.knownNodes) + "0000000000000000000000000000000",
+                    "0000000000000000000000000000000" + str(knownNodes) + "0000000000000000000000000000000",
                     self.server.connections[self.server.numCurrentConnections - 1][0])
 
         # Threading the connection acceptor
@@ -206,39 +217,53 @@ class FullNode():
         def handleRequestsThread():
             while True:
                 try:
+                    nodesToRemove = []
                     for i in range(len(self.server.connections)):
                         self.server.recievemsg(self.server.connections[i][0])
                         if self.server.finalmsg != "":
                             print("$Recieved mesasge: " + str(self.server.finalmsg))
-                        request = nodeCommand(self)
-                        toReturn = request.handleRequest(self.server.finalmsg)
-                        self.server.sendataspecfic(str(toReturn), self.server.connections[i][0])
-                        print("$Returned: " + str(toReturn) + " to " + str(self.server.connections[i][1]) + "\n")
-                except:
-                    pass
+                            request = nodeCommand(self)
+                            toReturn = request.handleRequest(self.server.finalmsg)
+                            self.server.sendataspecfic(str(toReturn), self.server.connections[i][0])
+                            print("$Returned: " + str(toReturn) + " to " + str(self.server.connections[i][1]) + "\n")
+                        else:
+                            removalNode = self.server.connections[i]
+                            nodesToRemove.append(removalNode)
+                            print("$Inactive connection pruned: " + str(removalNode[1]) + "\n")
+
+                    for i in range(len(nodesToRemove)):
+                        self.server.connections.remove(nodesToRemove[i])
+
+
+                except Exception as e:
+                    print("$Error in handling request: " + str(e))
+
 
         # Threading Handle Requests
         handleRequestsThread = threading.Thread(target=handleRequestsThread)
         print("$Proccesing Requests\n")
         handleRequestsThread.start()
 
-    def startUp(self):
 
-        for i in range(len(self.knownNodes)):
-            try:
-                newClientSocket = ClientConnection(self.knownNodes[i], 26527)
-                self.server.clientConnections.append([newClientSocket, self.knownNodes[i]])
-                print("$Connected to: " + str(self.knownNodes[i]) + "\n")
+    '''
+    def connectionPruner(self):
+        
+        #Defining the thread
+        def connectionPrunerThread():
+            while True:
                 try:
-                    newNodes = list(newClientSocket.finalmsg[31:31])
-                    for f in range(len(newNodes)):
-                        if not (newNodes[f] in self.knownNodes):
-                            self.knownNodes.append(newNodes[f])
-                except Exception as e:
-                    print("ERROR : " + str(e))
-                    return
-                print("$New nodes: " + str(self.knownNodes) + "\n")
+                    for i in range(len(self.server.connections)):
+    '''
 
+
+    def startUp(self):
+        knownNodes = list(knownNodesFile.read())
+
+        for i in range(len(knownNodes)):
+            try:
+                newClientSocket = ClientConnection(knownNodes[i], 26527)
+                self.server.clientConnections.append([newClientSocket, knownNodes[i]])
+                print("$Connected to: " + str(knownNodes[i]) + "\n")
             except Exception as e:
                 print("$ERROR: CONNECTION TO " + str(self.knownNodes[i]) + " FAILED: " + str(e) + "\n")
 
@@ -249,11 +274,13 @@ class FullNode():
                         self.hostingIPAdress))
                 print("$Connect back asked of: " + str(self.server.clientConnections[j][1]))
                 try:
-                    self.server.recievemsg(self.server.connections[j][0])
+                    self.server.recievemsg(self.server.clientConnections[j][0])
                     if self.server.finalmsg == "CONFIRMED":
                         print("$CONFIRMED\n")
                 except Exception as e:
                     print("$ERROR: CONNECT BACK FAILED: " + str(e) + "\n")
+
+                print(self.server.connections)
             except Exception as e:
                 print("$ERROR: DATA SEND TO: " + str(self.server.clientConnections[j][0]) + " FAILED: " + str(e) + "\n")
 
